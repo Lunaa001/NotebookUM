@@ -1,30 +1,25 @@
-from pydantic_settings import BaseSettings
-from typing import List
+import os
 
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'clave-secreta-por-defecto'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', '1', 'yes']
 
-class Settings(BaseSettings):
-    # Información de la aplicación
-    APP_NAME: str = "NotebookUM"
-    VERSION: str = "0.1.0"
-    DEBUG: bool = True
+class DevelopmentConfig(Config):
+    DEBUG = True
 
-    # Servidor
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
+class ProductionConfig(Config):
+    DEBUG = False
 
-    # CORS
-    ALLOWED_ORIGINS: List[str] = ["*"]
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
+    DEBUG = True
 
-    # OpenAI
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4"
-
-    # Base de datos (ejemplo si la usas)
-    DATABASE_URL: str = "sqlite:///./notebookum.db"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
-
-settings = Settings()
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'testing': TestingConfig,
+    'default': DevelopmentConfig
+}
