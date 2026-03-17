@@ -21,6 +21,8 @@ Aplicación Python moderna construida con FastAPI y OpenAI, gestionada con [uv](
    
    `uv` creará automáticamente un entorno virtual en `.venv` e instalará todas las dependencias:
    ```bash
+   uv venv
+   source .venv/bin/activate
    uv sync
    ```
 
