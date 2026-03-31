@@ -1,3 +1,5 @@
+# Constitucion 
+
 # Proyecto NotebookUM
 Es un proyecto que tiene como funcionalidades: 
 - extraer texto de archivos, utilizando la libreria Docling, 
@@ -6,10 +8,11 @@ Es un proyecto que tiene como funcionalidades:
 ## Tecnologias utilizadas en el proyecto
 Se utilizaran las siguientes tecnologias:
 - Metodologia de gestion de proyecto: SCRUM
-- Lenguaje: Python
+- Lenguaje: Python (usar PEP8)
 - Freamework: FastAPI
 - Herramienta de dependencia: uv
-- Base de datos: Postgres
+- Base de datos: PostgreSQL
+- Usar la estructura limpia del proyecto
 ## Principios
 Se aplicaran los siguientes principios:
 - KISS
@@ -33,3 +36,6 @@ Se aplicara los seis primeros factores:
 - 
 ## Funcionalidad de la base de datos
 - 
+
+# Especificacion
+
