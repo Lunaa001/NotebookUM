@@ -1,0 +1,300 @@
+openapi: "3.1.0"
+info:
+  title: NotebookUM API
+  version: "1.0.0"
+  description: API de procesamiento de documentos PDF con extracción de texto y generación de resúmenes
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+paths:
+  /users:
+    post:
+      summary: Registro de usuario
+      operationId: createUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email ya registrado
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /users/{id}:
+    get:
+      summary: Obtener usuario por ID
+      operationId: getUser
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Usuario encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /auth/login:
+    post:
+      summary: Autenticación de usuario
+      operationId: login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Token JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /documento/upload:
+    post:
+      summary: Subir documento PDF para procesamiento
+      operationId: uploadDocument
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Archivo PDF (máximo 25MB)
+              required:
+                - file
+      responses:
+        "202":
+          description: Documento aceptado para procesamiento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentAccepted"
+        "400":
+          description: Archivo inválido (no PDF o excede 25MB)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /summaries/document/{document_id}:
+    get:
+      summary: Obtener resumen de documento
+      operationId: getSummary
+      tags: [Summaries]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Resumen del documento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryResponse"
+        "202":
+          description: Documento en procesamiento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentProcessing"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: No autorizado para este documento
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserCreate:
+      type: object
+      required: [email, password, nombre]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        nombre:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          default: bearer
+        expires_in:
+          type: integer
+
+    DocumentAccepted:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        estado:
+          type: string
+          enum: [pending]
+        mensaje:
+          type: string
+          default: "Documento aceptado para procesamiento"
+
+    DocumentProcessing:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        estado:
+          type: string
+          enum: [pending, processing]
+        mensaje:
+          type: string
+
+    SummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        documento_id:
+          type: string
+          format: uuid
+        contenido:
+          type: string
+        estado:
+          type: string
+          enum: [completed]
+        created_at:
+          type: string
+          format: date-time
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        type:
+          type: string
+          format: uri
+          default: "about:blank"
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
