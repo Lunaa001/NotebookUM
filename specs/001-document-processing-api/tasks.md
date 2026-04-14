@@ -1,188 +1,169 @@
 # Tasks: API de Procesamiento de Documentos
 
-**Input**: Design documents from `/specs/001-document-processing-api/`
-**Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/
+**Input**: Design documents from `/specs/001-document-processing-api/`  
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/openapi.yaml
 
-**Tests**: TDD es OBLIGATORIO según la constitución del proyecto. Los tests se escriben
-ANTES de la implementación siguiendo el ciclo Red-Green-Refactor.
-
-**Organization**: Tasks are grouped by user story to enable independent implementation
-and testing of each story.
+**Tests**: TDD es obligatorio por constitución. Todas las historias incluyen tests.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
-
-## Path Conventions
-
-- **Single project**: `app/`, `tests/` at repository root
-- Paths shown below follow plan.md structure
+- **[P]**: Task parallelizable
+- **[Story]**: User story label (US1/US2/US3)
+- Cada tarea incluye ruta exacta de archivo
 
 ---
 
 ## Phase 1: Setup (Project Initialization)
 
-**Purpose**: Project initialization and basic structure
+**Purpose**: Inicializar proyecto y estructura base.
 
-- [ ] T001 Create project structure per implementation plan in app/
-- [ ] T002 Initialize Python project with uv and pyproject.toml dependencies
-- [ ] T003 [P] Create .env.example with required environment variables
-- [ ] T004 [P] Configure pytest and pytest-asyncio in pyproject.toml
-- [ ] T005 [P] Create tests/conftest.py with base fixtures and mocks
-
-**Checkpoint**: Project can run `uv sync` and `pytest` without errors
+- [ ] T001 [#256] Inicializar proyecto Python con uv en `pyproject.toml`
+- [ ] T002 [#257] Crear estructura de carpetas base en `app/` y `tests/`
+- [ ] T003 [#258] [P] Configurar entorno base en `.env.example`
+- [ ] T004 [#259] [P] Configurar pytest y pytest-asyncio en `pyproject.toml`
+- [ ] T005 [#260] [P] Crear fixtures base en `tests/conftest.py`
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+**Purpose**: Infraestructura común que bloquea todas las historias.
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+### Tests for Foundational Phase
 
-### Tests for Foundational Phase ⚠️
-
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T006 [P] Unit test for Settings config loading in tests/unit/test_config.py
-- [ ] T007 [P] Unit test for database connection pool in tests/unit/test_db_connection.py
-- [ ] T008 [P] Unit test for ProblemDetail schema in tests/unit/test_error_schema.py
-- [ ] T009 [P] Unit test for global exception handler in tests/unit/test_error_handlers.py
-- [ ] T010 [P] Unit test for JWT utilities in tests/unit/test_security.py
+- [ ] T006 [#262] [P] Crear test de configuración en `tests/unit/test_config.py`
+- [ ] T007 [#263] [P] Crear test de conexión PostgreSQL en `tests/unit/test_db_connection.py`
+- [ ] T008 [#264] [P] Crear test de esquema RFC9457 en `tests/unit/test_problem_details.py`
+- [ ] T009 [#265] [P] Crear test de JWT utilities en `tests/unit/test_security.py`
+- [ ] T010 [#266] [P] Crear test de error handler global en `tests/unit/test_error_handler.py`
 
 ### Implementation for Foundational Phase
 
-- [ ] T011 Implement Settings with pydantic-settings in app/config.py
-- [ ] T012 Implement asyncpg connection pool in app/db/connection.py
-- [ ] T013 [P] Create ProblemDetail RFC 9457 schema in app/schemas/error.py
-- [ ] T014 [P] Create custom exceptions in app/core/exceptions.py
-- [ ] T015 Implement global exception handler in app/core/error_handlers.py
-- [ ] T016 Implement JWT utilities (create/verify token) in app/core/security.py
-- [ ] T017 [P] Create base repository abstract class in app/repositories/base.py
-- [ ] T018 Create FastAPI app factory with error handlers in app/main.py
-- [ ] T019 [P] Create DDL script for usuarios table in docs/usuarios.sql
-- [ ] T020 [P] Create DDL script for documentos table in docs/documentos.sql
-- [ ] T021 [P] Create DDL script for resumenes table in docs/resumenes.sql
+- [ ] T011 [#267] Implementar settings con pydantic-settings en `app/config.py`
+- [ ] T012 [#268] Implementar pool asyncpg en `app/db/connection.py`
+- [ ] T013 [#269] [P] Implementar esquema Problem Details en `app/schemas/error.py`
+- [ ] T014 [#270] [P] Implementar excepciones de dominio en `app/core/exceptions.py`
+- [ ] T015 [#271] Implementar exception handler global en `app/core/error_handlers.py`
+- [ ] T016 [#272] Implementar utilidades JWT en `app/core/security.py`
+- [ ] T017 [#273] [P] Implementar logger estructurado en `app/core/logging.py`
+- [ ] T018 [#274] Implementar app factory FastAPI en `app/main.py`
+- [ ] T019 [#275] [P] Crear DDL de usuarios en `docs/usuarios.sql`
+- [ ] T020 [#276] [P] Crear DDL de documentos en `docs/documentos.sql`
+- [ ] T021 [#277] [P] Crear DDL de resumenes en `docs/resumenes.sql`
+- [ ] T022 [#278] Validar contrato OpenAPI base en `specs/001-document-processing-api/contracts/openapi.yaml`
 
-**Checkpoint**: Foundation ready - `pytest tests/unit/` passes, app starts with `granian`
+**Checkpoint**: Base técnica lista; historias pueden empezar.
 
 ---
 
-## Phase 3: User Story 1 - Registro de Usuario (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Registro de Usuario (Priority: P1)
 
-**Goal**: Permitir a usuarios crear cuenta y autenticarse para acceder al sistema
+**Goal**:  completo de usuarios con autenticación segura.
 
-**Independent Test**: Crear usuario via POST /api/v1/users, obtener token via POST /api/v1/auth/login,
-consultar perfil via GET /api/v1/users/{id}
+**Independent Test**: Crear, consultar, actualizar y eliminar usuario; login válido devuelve JWT.
 
-### Tests for User Story 1 ⚠️
+### Tests for User Story 1
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T022 [P] [US1] Unit test for Usuario model in tests/unit/test_models/test_usuario.py
-- [ ] T023 [P] [US1] Unit test for UsuarioRepository in tests/unit/test_repositories/test_usuario_repository.py
-- [ ] T024 [P] [US1] Unit test for AuthService in tests/unit/test_services/test_auth_service.py
-- [ ] T025 [P] [US1] Contract test for POST /api/v1/users in tests/contract/test_users_create.py
-- [ ] T026 [P] [US1] Contract test for GET /api/v1/users/{id} in tests/contract/test_users_get.py
-- [ ] T027 [P] [US1] Contract test for POST /api/v1/auth/login in tests/contract/test_auth_login.py
-- [ ] T028 [P] [US1] Integration test for user registration flow in tests/integration/test_api/test_user_flow.py
+- [ ] T023 [#280] [P] [US1] Crear tests de modelo usuario en `tests/unit/test_models/test_usuario.py`
+- [ ] T024 [#281] [P] [US1] Crear tests de repositorio usuario en `tests/unit/test_repositories/test_usuario_repository.py`
+- [ ] T025 [#282] [P] [US1] Crear tests de servicio auth en `tests/unit/test_services/test_auth_service.py`
+- [ ] T026 [#283] [P] [US1] Crear contract test POST users en `tests/contract/test_users_post.py`
+- [ ] T027 [#284] [P] [US1] Crear contract test GET users/{id} en `tests/contract/test_users_get.py`
+- [ ] T028 [#285] [P] [US1] Crear contract test PUT users/{id} en `tests/contract/test_users_put.py`
+- [ ] T029 [#286] [P] [US1] Crear contract test DELETE users/{id} en `tests/contract/test_users_delete.py`
+- [ ] T030 [#287] [P] [US1] Crear integration test flujo CRUD usuario en `tests/integration/test_api/test_users_crud_flow.py`
 
 ### Implementation for User Story 1
 
-- [ ] T029 [P] [US1] Create Usuario model in app/models/usuario.py
-- [ ] T030 [P] [US1] Create Usuario Pydantic schemas in app/schemas/usuario.py
-- [ ] T031 [US1] Implement UsuarioRepository in app/repositories/usuario_repository.py
-- [ ] T032 [US1] Implement AuthService (register, login, hash password) in app/services/auth_service.py
-- [ ] T033 [P] [US1] Create authentication dependency in app/api/deps.py
-- [ ] T034 [US1] Implement POST /api/v1/users endpoint in app/api/v1/users.py
-- [ ] T035 [US1] Implement GET /api/v1/users/{id} endpoint in app/api/v1/users.py
-- [ ] T036 [US1] Implement POST /api/v1/auth/login endpoint in app/api/v1/auth.py
-- [ ] T037 [US1] Register user routes in app/api/v1/router.py
+- [ ] T031 [#288] [P] [US1] Implementar modelo usuario en `app/models/usuario.py`
+- [ ] T032 [#289] [P] [US1] Implementar schemas usuario en `app/schemas/usuario.py`
+- [ ] T033 [#290] [US1] Implementar repositorio usuario en `app/repositories/usuario_repository.py`
+- [ ] T034 [#291] [US1] Implementar servicio auth/hash/login en `app/services/auth_service.py`
+- [ ] T035 [#292] [US1] Implementar endpoints POST/GET/PUT/DELETE users en `app/api/v1/users.py`
+- [ ] T036 [#293] [US1] Implementar endpoint POST auth/login en `app/api/v1/auth.py`
+- [ ] T037 [#294] [US1] Registrar rutas de usuario/auth en `app/api/v1/router.py`
 
-**Checkpoint**: User Story 1 complete - can register, login, and view profile
+**Checkpoint**: US1 funcional e independiente.
 
 ---
 
-## Phase 4: User Story 2 - Subida y Procesamiento de Documentos (Priority: P1) 🎯 MVP
+## Phase 4: User Story 2 - Subida y Procesamiento de Documentos (Priority: P1)
 
-**Goal**: Permitir subir PDFs, extraer texto con Docling, generar resumen con Nemotron
+**Goal**: CRUD de documentos + upload asíncrono + validaciones PDF/25MB + estados.
 
-**Independent Test**: Subir PDF via POST /api/v1/documento/upload, recibir 202 Accepted,
-verificar que documento pasa a estado processing→completed, resumen se genera
+**Independent Test**: Subir PDF válido recibe 202; documento cambia de estado y permite CRUD de metadatos.
 
-### Tests for User Story 2 ⚠️
+### Tests for User Story 2
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T038 [P] [US2] Unit test for Documento model in tests/unit/test_models/test_documento.py
-- [ ] T039 [P] [US2] Unit test for DocumentoRepository in tests/unit/test_repositories/test_documento_repository.py
-- [ ] T040 [P] [US2] Unit test for ExtractionService (mock Docling) in tests/unit/test_services/test_extraction_service.py
-- [ ] T041 [P] [US2] Unit test for SummaryService (mock OpenAI) in tests/unit/test_services/test_summary_service.py
-- [ ] T042 [P] [US2] Unit test for DocumentService (orchestration) in tests/unit/test_services/test_document_service.py
-- [ ] T043 [P] [US2] Contract test for POST /api/v1/documento/upload in tests/contract/test_documento_upload.py
-- [ ] T044 [P] [US2] Contract test for file validation (PDF, size) in tests/contract/test_documento_validation.py
-- [ ] T045 [P] [US2] Integration test for upload flow in tests/integration/test_api/test_upload_flow.py
+- [ ] T038 [#296] [P] [US2] Crear tests de modelo documento en `tests/unit/test_models/test_documento.py`
+- [ ] T039 [#297] [P] [US2] Crear tests de repositorio documento en `tests/unit/test_repositories/test_documento_repository.py`
+- [ ] T040 [#298] [P] [US2] Crear tests de extracción Docling mock en `tests/unit/test_services/test_extraction_service.py`
+- [ ] T041 [#299] [P] [US2] Crear tests de resumen OpenAI mock en `tests/unit/test_services/test_summary_service.py`
+- [ ] T042 [#300] [P] [US2] Crear tests de orquestación documento en `tests/unit/test_services/test_document_service.py`
+- [ ] T043 [#301] [P] [US2] Crear contract test POST documento/upload en `tests/contract/test_documents_upload_post.py`
+- [ ] T044 [#302] [P] [US2] Crear contract test validación PDF/25MB en `tests/contract/test_documents_upload_validation.py`
+- [ ] T045 [#303] [P] [US2] Crear contract test GET documentos/{id} en `tests/contract/test_documents_get.py`
+- [ ] T046 [#304] [P] [US2] Crear contract test GET documentos por usuario en `tests/contract/test_documents_list_by_user.py`
+- [ ] T047 [#305] [P] [US2] Crear contract test PUT documentos/{id} en `tests/contract/test_documents_put.py`
+- [ ] T048 [#306] [P] [US2] Crear contract test DELETE documentos/{id} en `tests/contract/test_documents_delete.py`
+- [ ] T049 [#307] [P] [US2] Crear integration test flujo upload async en `tests/integration/test_api/test_documents_upload_async_flow.py`
 
 ### Implementation for User Story 2
 
-- [ ] T046 [P] [US2] Create Documento model in app/models/documento.py
-- [ ] T047 [P] [US2] Create Documento Pydantic schemas in app/schemas/documento.py
-- [ ] T048 [US2] Implement DocumentoRepository in app/repositories/documento_repository.py
-- [ ] T049 [US2] Implement ExtractionService (Docling wrapper) in app/services/extraction_service.py
-- [ ] T050 [US2] Implement SummaryService (OpenAI/Nemotron wrapper) in app/services/summary_service.py
-- [ ] T051 [US2] Implement DocumentService (upload + BackgroundTask) in app/services/document_service.py
-- [ ] T052 [US2] Implement POST /api/v1/documento/upload endpoint in app/api/v1/documents.py
-- [ ] T053 [US2] Add file validation middleware (PDF, 25MB) in app/api/v1/documents.py
-- [ ] T054 [US2] Register document routes in app/api/v1/router.py
+- [ ] T050 [#308] [P] [US2] Implementar modelo documento en `app/models/documento.py`
+- [ ] T051 [#309] [P] [US2] Implementar schemas documento en `app/schemas/documento.py`
+- [ ] T052 [#310] [US2] Implementar repositorio documento en `app/repositories/documento_repository.py`
+- [ ] T053 [#311] [US2] Implementar servicio extracción con Docling en `app/services/extraction_service.py`
+- [ ] T054 [#312] [US2] Implementar servicio resumen con OpenAI/Nemotron en `app/services/summary_service.py`
+- [ ] T055 [#313] [US2] Implementar servicio documento y BackgroundTasks en `app/services/document_service.py`
+- [ ] T056 [#314] [US2] Implementar endpoints POST upload y CRUD documentos en `app/api/v1/documents.py`
+- [ ] T057 [#315] [US2] Implementar validaciones `application/pdf` y 25MB en `app/api/v1/documents.py`
+- [ ] T058 [#316] [US2] Registrar rutas de documentos en `app/api/v1/router.py`
 
-**Checkpoint**: User Story 2 complete - can upload PDF, processing runs async
+**Checkpoint**: US2 funcional e independiente.
 
 ---
 
-## Phase 5: User Story 3 - Consulta de Resúmenes (Priority: P2)
+## Phase 5: User Story 3 - Consulta y CRUD de Resúmenes (Priority: P2)
 
-**Goal**: Permitir consultar resúmenes de documentos procesados
+**Goal**: CRUD de resúmenes y consulta por `document_id` con control de ownership.
 
-**Independent Test**: Consultar GET /api/v1/summaries/document/{id}, recibir resumen
-si completed, estado si processing/pending, error si failed/not found
+**Independent Test**: Consultar resumen por documento retorna contenido/estado correcto y bloquea accesos cruzados.
 
-### Tests for User Story 3 ⚠️
+### Tests for User Story 3
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T055 [P] [US3] Unit test for Resumen model in tests/unit/test_models/test_resumen.py
-- [ ] T056 [P] [US3] Unit test for ResumenRepository in tests/unit/test_repositories/test_resumen_repository.py
-- [ ] T057 [P] [US3] Contract test for GET /api/v1/summaries/document/{id} (completed) in tests/contract/test_summaries_completed.py
-- [ ] T058 [P] [US3] Contract test for GET /api/v1/summaries/document/{id} (processing) in tests/contract/test_summaries_processing.py
-- [ ] T059 [P] [US3] Contract test for authorization (own documents only) in tests/contract/test_summaries_auth.py
-- [ ] T060 [P] [US3] Integration test for summary retrieval flow in tests/integration/test_api/test_summary_flow.py
+- [ ] T059 [#318] [P] [US3] Crear tests de modelo resumen en `tests/unit/test_models/test_resumen.py`
+- [ ] T060 [#319] [P] [US3] Crear tests de repositorio resumen en `tests/unit/test_repositories/test_resumen_repository.py`
+- [ ] T061 [#320] [P] [US3] Crear contract test GET summaries/document/{document_id} en `tests/contract/test_summaries_get_by_document.py`
+- [ ] T062 [#321] [P] [US3] Crear contract test PUT summaries/{id} en `tests/contract/test_summaries_put.py`
+- [ ] T063 [#322] [P] [US3] Crear contract test DELETE summaries/{id} en `tests/contract/test_summaries_delete.py`
+- [ ] T064 [#323] [P] [US3] Crear contract test autorización ownership en `tests/contract/test_summaries_authorization.py`
+- [ ] T065 [#324] [P] [US3] Crear integration test flujo consulta resumen en `tests/integration/test_api/test_summaries_flow.py`
 
 ### Implementation for User Story 3
 
-- [ ] T061 [P] [US3] Create Resumen model in app/models/resumen.py
-- [ ] T062 [P] [US3] Create Resumen Pydantic schemas in app/schemas/resumen.py
-- [ ] T063 [US3] Implement ResumenRepository in app/repositories/resumen_repository.py
-- [ ] T064 [US3] Implement GET /api/v1/summaries/document/{id} endpoint in app/api/v1/summaries.py
-- [ ] T065 [US3] Add ownership authorization check in app/api/v1/summaries.py
-- [ ] T066 [US3] Register summary routes in app/api/v1/router.py
+- [ ] T066 [#325] [P] [US3] Implementar modelo resumen en `app/models/resumen.py`
+- [ ] T067 [#326] [P] [US3] Implementar schemas resumen en `app/schemas/resumen.py`
+- [ ] T068 [#327] [US3] Implementar repositorio resumen en `app/repositories/resumen_repository.py`
+- [ ] T069 [#328] [US3] Implementar endpoint GET summaries/document/{document_id} en `app/api/v1/summaries.py`
+- [ ] T070 [#329] [US3] Implementar endpoints PUT/DELETE summaries/{id} en `app/api/v1/summaries.py`
+- [ ] T071 [#330] [US3] Implementar control ownership en `app/api/v1/summaries.py`
+- [ ] T072 [#331] [US3] Registrar rutas de resúmenes en `app/api/v1/router.py`
 
-**Checkpoint**: User Story 3 complete - can retrieve summaries with proper auth
+**Checkpoint**: US3 funcional e independiente.
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Improvements that affect multiple user stories
+**Purpose**: Cierre técnico, calidad y operación.
 
-- [ ] T067 [P] Add structured logging configuration in app/core/logging.py
-- [ ] T068 [P] Add BackgroundTask logging (start/success/failure) in app/services/document_service.py
-- [ ] T069 [P] Create API documentation in docs/api-guide.md
-- [ ] T070 [P] Add health check endpoint in app/api/v1/health.py
-- [ ] T071 Run full test suite and verify coverage >80%
-- [ ] T072 Run quickstart.md validation manually
-- [ ] T073 [P] Add Dockerfile for containerized deployment
+- [ ] T073 [#333] [P] Completar documentación operativa en `specs/001-document-processing-api/quickstart.md`
+- [ ] T074 [#334] [P] Añadir endpoint healthcheck en `app/api/v1/health.py`
+- [ ] T075 [#335] [P] Añadir test de contrato OpenAPI en `tests/contract/test_openapi.py`
+- [ ] T076 [#336] Ejecutar suite completa y cobertura en `tests/`
+- [ ] T077 [#337] Validar formato RFC9457 en errores clave en `tests/integration/test_api/test_error_format.py`
+- [ ] T078 [#338] [P] Preparar comando de ejecución Granian en `README.md`
 
 ---
 
@@ -190,96 +171,51 @@ si completed, estado si processing/pending, error si failed/not found
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3+)**: All depend on Foundational phase completion
-  - US1 and US2 can proceed in parallel (if staffed)
-  - US3 depends on US2 (needs documentos to query)
-- **Polish (Final Phase)**: Depends on all user stories being complete
+- Phase 1 → Phase 2 → (Phase 3 y Phase 4 en paralelo) → Phase 5 → Phase 6
 
 ### User Story Dependencies
 
-- **User Story 1 (P1)**: Can start after Foundational - No dependencies on other stories
-- **User Story 2 (P1)**: Can start after Foundational - No dependencies on other stories
-- **User Story 3 (P2)**: Depends on US2 (needs documentos and resumenes to exist)
-
-### Within Each User Story (TDD Flow)
-
-1. Tests MUST be written and FAIL before implementation
-2. Models before repositories
-3. Repositories before services
-4. Services before endpoints
-5. Endpoints before route registration
-6. Story complete when all story tests pass
+- **US1**: depende de Foundational
+- **US2**: depende de Foundational
+- **US3**: depende de US2 (resúmenes dependen de documentos procesados)
 
 ### Parallel Opportunities
 
-- All Setup tasks marked [P] can run in parallel
-- All Foundational tests marked [P] can run in parallel
-- All Foundational implementations marked [P] can run in parallel
-- Once Foundational completes: US1 and US2 can start in parallel
-- Within each story: All tests marked [P] can run in parallel
-- Within each story: Models and schemas marked [P] can run in parallel
+- Setup: T003, T004, T005 en paralelo
+- Foundational: T006–T010 y T013, T014, T017, T019–T021 en paralelo
+- Historias: pruebas por historia en paralelo; modelos/schemas por historia en paralelo
+- Equipo de 4:  
+  - Dev A: US1  
+  - Dev B: US2  
+  - Dev C: US3 (arranca al estabilizar US2)  
+  - Dev D: contratos, observabilidad, CI/calidad transversal
 
 ---
 
-## Parallel Example: User Story 1
+## Parallel Example: User Story 2
 
 ```bash
-# Launch all tests for User Story 1 together:
-Task: T022 "Unit test for Usuario model"
-Task: T023 "Unit test for UsuarioRepository"
-Task: T024 "Unit test for AuthService"
-Task: T025 "Contract test for POST /api/v1/users"
-Task: T026 "Contract test for GET /api/v1/users/{id}"
-Task: T027 "Contract test for POST /api/v1/auth/login"
-Task: T028 "Integration test for user registration flow"
-
-# Launch parallelizable implementations:
-Task: T029 "Create Usuario model"
-Task: T030 "Create Usuario Pydantic schemas"
+Task: "T043 [US2] Contract test POST upload en tests/contract/test_documents_upload_post.py"
+Task: "T044 [US2] Contract test validación PDF/25MB en tests/contract/test_documents_upload_validation.py"
+Task: "T050 [US2] Modelo documento en app/models/documento.py"
+Task: "T051 [US2] Schemas documento en app/schemas/documento.py"
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Stories 1 + 2)
+### MVP First
 
-1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
-3. Complete Phase 3: User Story 1 (Registration + Auth)
-4. Complete Phase 4: User Story 2 (Document Upload + Processing)
-5. **STOP and VALIDATE**: Test US1 + US2 independently
-6. Deploy/demo if ready (minimal viable product)
+1. Completar Phase 1 + Phase 2
+2. Completar US1 (registro/login + CRUD usuarios)
+3. Completar US2 (upload async + CRUD documentos)
+4. Validar demo MVP
 
 ### Incremental Delivery
 
-1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Can demo registration
-3. Add User Story 2 → Test independently → Can demo upload (MVP!)
-4. Add User Story 3 → Test independently → Full feature complete
-5. Polish phase → Production ready
+1. US1 release interno
+2. US2 release funcional de negocio
+3. US3 release de consulta/gestión de resúmenes
+4. Polish para estabilización final
 
-### Parallel Team Strategy
-
-With multiple developers:
-
-1. Team completes Setup + Foundational together
-2. Once Foundational is done:
-   - Developer A: User Story 1 (Registration)
-   - Developer B: User Story 2 (Upload) - runs in parallel
-3. Developer A moves to User Story 3 after US1 complete
-4. Stories complete and integrate independently
-
----
-
-## Notes
-
-- [P] tasks = different files, no dependencies
-- [Story] label maps task to specific user story for traceability
-- Each user story should be independently completable and testable
-- TDD is NON-NEGOTIABLE: Verify tests fail before implementing
-- Commit after each task or logical group
-- Stop at any checkpoint to validate story independently
-- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

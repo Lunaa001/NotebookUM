@@ -10,7 +10,7 @@ ASSIGNEES = {
     "US3": "DannyOkk",
     "US4": "vaninafuentes",
 }
-TASKS_MD = Path("specs/001-api-gestion-documentos/tasks.md")
+TASKS_MD = Path("specs/001-document-processing-api/tasks.md")
 
 
 def gh(*args: str) -> str:
