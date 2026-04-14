@@ -1,0 +1,17 @@
+
+services:
+  notebookum:
+    container_name: notebookum
+    image: notebookum:1.0.0
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY=${OPENAI_API_KEY}
+      OPENAI_MODEL=${OPENAI_MODEL}
+      DATABASE_URL=${DATABASE_URL}
+    networks:
+      - mired
+
+networks:
+  mired:
+    external: true
