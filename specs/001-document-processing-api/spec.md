@@ -98,38 +98,89 @@ previamente procesado y verificando que contiene el texto resumido.
 - **FR-003**: El sistema DEBE permitir actualizar datos de un usuario existente.
 - **FR-004**: El sistema DEBE permitir eliminar cuentas de usuario.
 - **FR-005**: El sistema DEBE validar que los datos de registro estén completos.
+- **FR-006**: El sistema DEBE hashear contraseñas antes de persistir cuentas de usuario.
 
 #### Gestión de Documentos
 
-- **FR-006**: El sistema DEBE permitir subir archivos PDF de hasta 25MB.
-- **FR-007**: El sistema DEBE validar que el tipo de contenido sea `application/pdf`.
-- **FR-008**: El sistema DEBE rechazar archivos que no sean PDF con error estructurado
+- **FR-007**: El sistema DEBE permitir subir archivos PDF de hasta 25MB.
+- **FR-008**: El sistema DEBE validar que el tipo de contenido sea `application/pdf`.
+- **FR-009**: El sistema DEBE rechazar archivos que no sean PDF con error estructurado
   siguiendo el formato RFC 9457 (Problem Details).
-- **FR-009**: El sistema DEBE rechazar archivos que excedan 25MB con error estructurado
+- **FR-010**: El sistema DEBE rechazar archivos que excedan 25MB con error estructurado
   siguiendo el formato RFC 9457.
-- **FR-010**: El sistema DEBE procesar documentos de forma asíncrona.
-- **FR-011**: El sistema DEBE extraer el texto del documento PDF.
-- **FR-012**: El sistema DEBE generar un resumen del texto extraído usando el modelo
+- **FR-011**: El sistema DEBE procesar documentos de forma asíncrona.
+- **FR-012**: El sistema DEBE responder `202 Accepted` con el identificador del documento
+  cuando el archivo pase validaciones iniciales.
+- **FR-013**: El sistema DEBE extraer el texto del documento PDF.
+- **FR-014**: El sistema DEBE generar un resumen del texto extraído usando el modelo
   Nemotron-3 nano 30B.
-- **FR-013**: El sistema NO DEBE almacenar el archivo PDF original.
-- **FR-014**: El sistema DEBE permitir consultar documentos por identificador.
-- **FR-015**: El sistema DEBE permitir listar documentos de un usuario.
-- **FR-016**: El sistema DEBE permitir eliminar registros de documentos.
+- **FR-015**: El sistema NO DEBE almacenar el archivo PDF original.
+- **FR-016**: El sistema DEBE permitir consultar documentos por identificador.
+- **FR-017**: El sistema DEBE permitir listar documentos de un usuario.
+- **FR-018**: El sistema DEBE permitir actualizar metadatos de documentos.
+- **FR-019**: El sistema DEBE permitir eliminar registros de documentos.
+- **FR-020**: El sistema DEBE manejar estados de documento: `pending`, `processing`,
+  `completed`, `failed`.
 
 #### Gestión de Resúmenes
 
-- **FR-017**: El sistema DEBE almacenar los resúmenes generados en base de datos.
-- **FR-018**: El sistema DEBE permitir consultar el resumen de un documento específico.
-- **FR-019**: El sistema DEBE permitir actualizar resúmenes existentes.
-- **FR-020**: El sistema DEBE permitir eliminar resúmenes.
-- **FR-021**: El sistema DEBE asociar cada resumen con su documento origen.
+- **FR-021**: El sistema DEBE almacenar los resúmenes generados en base de datos.
+- **FR-022**: El sistema DEBE permitir consultar el resumen de un documento específico.
+- **FR-023**: El sistema DEBE permitir actualizar resúmenes existentes.
+- **FR-024**: El sistema DEBE permitir eliminar resúmenes.
+- **FR-025**: El sistema DEBE asociar cada resumen con su documento origen.
+- **FR-026**: El sistema DEBE restringir el acceso a resúmenes para que cada usuario solo
+  consulte documentos que él mismo subió.
 
 #### Estructura de Datos
 
-- **FR-022**: El sistema DEBE mantener tres entidades principales: usuarios,
+- **FR-027**: El sistema DEBE mantener tres entidades principales: usuarios,
   documentos y resumenes (nombres en plural y minúsculas).
-- **FR-023**: Los scripts DDL DEBEN almacenarse en la carpeta `docs/` con extensión `.sql`.
-- **FR-024**: Todos los endpoints DEBEN usar el prefijo `/api/v1/`.
+- **FR-028**: Los scripts DDL DEBEN almacenarse en la carpeta `docs/` con extensión `.sql`.
+- **FR-029**: Todos los endpoints DEBEN usar el prefijo `/api/v1/`.
+
+#### Contratos de API y Errores
+
+- **FR-030**: El sistema DEBE exponer `POST /api/v1/users` para crear usuarios.
+- **FR-031**: El sistema DEBE exponer `GET /api/v1/users/{id}` para consultar usuarios.
+- **FR-032**: El sistema DEBE exponer `POST /api/v1/documento/upload` para crear documentos
+  mediante carga de archivo.
+- **FR-033**: El sistema DEBE exponer `GET /api/v1/summaries/document/{document_id}` para
+  consultar el resumen y el estado de procesamiento.
+- **FR-034**: El sistema DEBE aplicar RFC 9457 en TODAS las respuestas de error con
+  campos `type`, `title`, `status`, `detail`, `instance`.
+- **FR-035**: El sistema DEBE centralizar el manejo de excepciones en un manejador global.
+
+#### Seguridad, Configuración y Calidad
+
+- **FR-036**: El sistema DEBE proteger con autenticación las rutas de subida de documentos
+  y consulta de resúmenes.
+- **FR-037**: El sistema DEBE gestionar credenciales y configuración sensible mediante
+  variables de entorno.
+- **FR-038**: El sistema DEBE registrar logs estructurados para inicio, éxito y fallo de
+  procesamiento asíncrono y llamadas a servicios externos.
+- **FR-039**: El sistema DEBE incluir pruebas unitarias e integración para los flujos
+  principales.
+- **FR-040**: El sistema DEBE permitir mockear Docling y Nemotron en pruebas para evitar
+  dependencia de servicios externos.
+
+#### Matriz CRUD Explícita
+
+- **FR-041**: El sistema DEBE implementar CRUD completo de `usuarios`:
+  - Create: registro de usuario
+  - Read: consulta por identificador
+  - Update: actualización de perfil
+  - Delete: eliminación de cuenta
+- **FR-042**: El sistema DEBE implementar CRUD completo de `documentos`:
+  - Create: subida de documento (upload)
+  - Read: consulta por identificador y listado por usuario
+  - Update: actualización de metadatos y estado del documento
+  - Delete: eliminación de documento
+- **FR-043**: El sistema DEBE implementar CRUD completo de `resumenes`:
+  - Create: generación y almacenamiento automático tras procesamiento
+  - Read: consulta por `document_id`
+  - Update: actualización del contenido de resumen
+  - Delete: eliminación de resumen
 
 ### Key Entities
 

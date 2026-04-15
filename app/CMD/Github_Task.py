@@ -140,7 +140,7 @@ def update_tasks_md(path: Path, task_id: str, url: str) -> None:
         return
     text = path.read_text(encoding="utf-8")
     updated = re.sub(
-        rf"(- \[[ x]\] {task_id} )", rf"\1[#{url.split('/')[-1]}]({url}) ", text, count=1,
+        rf"(- \[[ x]\] {task_id} )", rf"\1[#{url.split('/')[-1]}] ", text, count=1,
     )
     if updated != text:
         path.write_text(updated, encoding="utf-8")
@@ -253,5 +253,5 @@ def main() -> int:
     return 0
 
 
-if __name__== "_main_":
+if __name__ == "__main__":
     raise SystemExit(main())

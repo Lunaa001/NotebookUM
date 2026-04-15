@@ -10,8 +10,14 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL}
       DATABASE_URL: ${DATABASE_URL}
     networks:
-      - mired
+      - notebookum-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notebookum=true"
+      - "traefik.http.routers.notebookum.rule=Host(`notebookum.local`)"
+      - "traefik.http.routers.notebookum.tls=true"
+      - "traefik.http.services.notebookum.loadbalancer.server.port=5432"
 
 networks:
-  mired:
+  notebookum-network:
     external: true
