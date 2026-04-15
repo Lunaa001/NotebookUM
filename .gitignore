@@ -132,6 +132,7 @@ bin/
 include/
 lib64
 pyvenv.cfg
+data/
 
 # add vscode settings
 .vscode/
