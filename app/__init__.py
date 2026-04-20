@@ -1,8 +1,9 @@
-from flask import Flask
 from config import Config
-from .controllers import register_blueprints
 
 def create_app(config_class=Config):
+    from flask import Flask
+    from .controllers import register_blueprints
+
     app = Flask(__name__)
     app.config.from_object(config_class)
     
