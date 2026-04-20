@@ -7,7 +7,7 @@ services:
       - ./data:/data
     command: redis-server /data/redis.config --loglevel notice --requirepass ${REDIS_PASSWORD}
     networks:
-      - mired
+      - notebookum-network
     labels:
       - "traefik.enable=true"
       - "traefik.tcp.routers.redis.rule=HostSNI(`*`)"
@@ -16,5 +16,5 @@ services:
       - "traefik.tcp.services.redis.loadbalancer.server.port=6379"
 
 networks:
-    mired:
-      external: true
+  notebookum-network:
+    external: true

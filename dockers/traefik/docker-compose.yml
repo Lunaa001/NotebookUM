@@ -15,10 +15,10 @@ services:
             - ./config/config.yml:/etc/traefik/config.yml:ro
             - ./certs:/etc/certs:ro
         networks:
-            - mired
+            - notebookum-network
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.traefik=true"
 networks:
-    mired:
-        external: true
+  notebookum-network:
+    external: true

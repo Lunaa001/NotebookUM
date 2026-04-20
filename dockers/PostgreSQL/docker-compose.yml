@@ -5,7 +5,7 @@ services:
         ports:
             - "5432:5432"
         networks:
-            - mired
+            - notebookum-network
         environment:
             - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             - POSTGRES_DB=${POSTGRES_DB}
@@ -16,5 +16,5 @@ services:
             - ./sql:/docker-entrypoint-initdb.d
         restart: always
 networks:
-    mired:
-        external: true
+  notebookum-network:
+    external: true

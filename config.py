@@ -23,3 +23,10 @@ config = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
+
+class Settings:
+    VERSION = "1.0.0"
+    APP_NAME = "NotebookUM"
+    ALLOWED_ORIGINS = ["*"]
+
+settings = Settings()
