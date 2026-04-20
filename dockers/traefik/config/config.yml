@@ -3,6 +3,8 @@ http:
     traefik:
       rule: "Host(`traefik.universidad.localhost`)"
       service: "api@internal"
+      entryPoints:
+        - https
       tls:
         domains:
           - main: "universidad.localhost"
@@ -11,6 +13,18 @@ http:
           - main: "universidad.local"
             sans:
               - "*.universidad.local"
+    notebookum:
+      rule: "Host(`notebookum.universidad.localhost`)"
+      service: "notebookum"
+      entryPoints:
+        - http
+        - https
+
+  services:
+    notebookum:
+      loadBalancer:
+        servers:
+          - url: "http://notebookum:8000"
 
 tls:
   certificates:

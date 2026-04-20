@@ -16,9 +16,9 @@ services:
       - notebookum-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.notebookum=true"
-      - "traefik.http.routers.notebookum.rule=Host(`notebookum.local`)"
-      - "traefik.http.routers.notebookum.tls=true"
+      - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.localhost`)"
+      - "traefik.http.routers.notebookum.service=notebookum"
+      - "traefik.http.routers.notebookum.entrypoints=http,https"
       - "traefik.http.services.notebookum.loadbalancer.server.port=8000"
 
 networks:
