@@ -2,13 +2,16 @@
 services:
   notebookum:
     container_name: notebookum
+    build:
+      context: ../../
+      dockerfile: Dockerfile
     image: notebookum:1.0.0
     ports:
       - "8000:8000"
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL}
-      DATABASE_URL: ${DATABASE_URL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-default}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://defaultuser:defaultpassword@postgresql-servidor:5432/defaultdb}
     networks:
       - notebookum-network
     labels:
