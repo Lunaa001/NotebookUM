@@ -1,4 +1,10 @@
 http:
+  middlewares:
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
   routers:
     traefik:
       rule: "Host(`traefik.universidad.localhost`)"
@@ -13,12 +19,43 @@ http:
           - main: "universidad.local"
             sans:
               - "*.universidad.local"
+
+    notebookum-http:
+      rule: "Host(`notebookum.universidad.localhost`)"
+      service: "notebookum"
+      entryPoints:
+        - http
+      middlewares:
+        - redirect-https
+
+    notebookum-https:
+      rule: "Host(`notebookum.universidad.localhost`)"
+      service: "notebookum"
+      entryPoints:
+        - https
+      tls:
+        domains:
+          - main: "universidad.localhost"
+            sans:
+              - "*.universidad.localhost"
+          - main: "universidad.local"
+            sans:
+              - "*.universidad.local"
+
     notebookum:
       rule: "Host(`notebookum.universidad.localhost`)"
       service: "notebookum"
       entryPoints:
         - http
         - https
+      tls:
+        domains:
+          - main: "universidad.localhost"
+            sans:
+              - "*.universidad.localhost"
+          - main: "universidad.local"
+            sans:
+              - "*.universidad.local"
 
   services:
     notebookum:
@@ -27,6 +64,11 @@ http:
           - url: "http://notebookum:8000"
 
 tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: "/etc/certs/cert.pem"
+        keyFile: "/etc/certs/key.pem"
   certificates:
     - certFile: "/etc/certs/cert.pem"
       keyFile: "/etc/certs/key.pem"
