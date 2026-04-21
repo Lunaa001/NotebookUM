@@ -6,6 +6,14 @@ http:
         permanent: true
 
   routers:
+    traefik-http:
+      rule: "Host(`traefik.universidad.localhost`)"
+      service: "noop@internal"
+      entryPoints:
+        - http
+      middlewares:
+        - redirect-https
+
     traefik:
       rule: "Host(`traefik.universidad.localhost`)"
       service: "api@internal"
