@@ -17,7 +17,7 @@ providers:
 
 
 log:
-  level: INFO
+  level: DEBUG
   format: common
 
 entryPoints:

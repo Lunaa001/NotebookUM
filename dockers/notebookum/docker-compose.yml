@@ -12,14 +12,21 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-default}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://defaultuser:defaultpassword@postgresql-servidor:5432/defaultdb}
+      # Celery Configuration (for async tasks)
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
     networks:
       - notebookum-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.localhost`)"
+      - "traefik.http.routers.notebookum.entryPoints=https"
       - "traefik.http.routers.notebookum.service=notebookum"
       - "traefik.http.routers.notebookum.entrypoints=http,https"
       - "traefik.http.services.notebookum.loadbalancer.server.port=8000"
+    volumes:
+            - ../../app:/app/app:ro
+            - ../../main.py:/app/main.py:ro
 
 networks:
   notebookum-network:
