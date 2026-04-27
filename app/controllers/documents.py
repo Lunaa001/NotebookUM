@@ -1,79 +1,61 @@
-"""Routes for document upload and asynchronous processing."""
+"""Routes for document upload and processing."""
 
 from __future__ import annotations
 
 import os
 import tempfile
 from pathlib import Path
+from datetime import datetime
 
-from celery.exceptions import CeleryError
 from fastapi import APIRouter, UploadFile, File, Header, HTTPException, status
-from pydantic import BaseModel
-from sqlalchemy.exc import SQLAlchemyError
+from pydantic import BaseModel, ConfigDict
 
-from app.database import db
-from app.models.document import HistorialDocumento
-from app.services.async_tasks import process_document_task
-from app.services.validation import (
-    create_rfc9457_error,
-    validate_file_size,
-    validate_pdf_content_type,
-)
-from app.utils.errors import internal_server_error, not_found
+from app.models import Document, Usuario
 from config import settings
 
 documents_router = APIRouter()
 
 
-class DocumentStatusResponse(BaseModel):
-    document_id: int
-    status: str
-    created_at: str | None = None
-
-
 class DocumentUploadResponse(BaseModel):
+    """Response model for document upload"""
+    model_config = ConfigDict(from_attributes=True)
+    
     document_id: int
     status: str
-    job_id: str
-    status_url: str
+    nombre_archivo: str
+    mensaje: str = "Documento almacenado exitosamente"
 
 
-@documents_router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_202_ACCEPTED)
+class DocumentStatusResponse(BaseModel):
+    """Response model for document status"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    document_id: int
+    nombre_archivo: str
+    usuario_id: int
+    estado: str = "almacenado"
+    fecha_creacion: str
+
+
+@documents_router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
     x_user_id: str = Header("1")
 ):
-    """Upload a PDF document and enqueue asynchronous processing."""
+    """
+    Upload a document and store it.
+    
+    Args:
+        file: PDF or document file
+        x_user_id: User ID header
+        
+    Returns:
+        DocumentUploadResponse with document info
+    """
     if file is None or not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A PDF file is required in form field 'file'."
-        )
-
-    try:
-        # Read file content to validate
-        content = await file.read()
-        await file.seek(0)
-        
-        # Create a mock object with required attributes for validation
-        class FileWrapper:
-            def __init__(self, upload_file, content):
-                self.upload_file = upload_file
-                self.content = content
-                self.filename = upload_file.filename
-                self.content_type = upload_file.content_type
-                self.content_length = len(content)
-            
-            def stream_seek(self):
-                pass
-        
-        file_wrapper = FileWrapper(file, content)
-        validate_pdf_content_type(file_wrapper)
-        validate_file_size(file_wrapper, max_size=settings.MAX_UPLOAD_SIZE)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc)
+            detail="A file is required in form field 'file'."
         )
 
     try:
@@ -84,78 +66,85 @@ async def upload_document(
             detail="Invalid X-User-ID header value."
         )
 
+    # Validate file exists
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is empty."
+        )
+    
+    if len(content) > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds maximum allowed: {settings.MAX_UPLOAD_SIZE} bytes"
+        )
+    
+    await file.seek(0)
+
+    # Create temporary file for storage
     suffix = Path(file.filename).suffix or ".pdf"
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir="uploads") as tmp_file:
             tmp_file.write(content)
-            temp_pdf_path = tmp_file.name
-    except OSError:
+            temp_path = tmp_file.name
+    except OSError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to store uploaded file for processing."
+            detail=f"Unable to store file: {str(e)}"
         )
 
-    document = HistorialDocumento(
-        usuario_id=usuario_id,
-        nombre_archivo=file.filename,
-        tamanio_bytes=len(content),
-        estado="pending",
-    )
-    try:
-        db.session.add(document)
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        _safe_delete(temp_pdf_path)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to persist document metadata."
-        )
-
-    try:
-        task_result = process_document_task.delay(
-            user_id=usuario_id,
-            document_id=document.id,
-            pdf_path=temp_pdf_path,
-        )
-    except (CeleryError, RuntimeError):
-        document.estado = "failed"
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-        _safe_delete(temp_pdf_path)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to enqueue document processing task."
-        )
-
+    # Simulated response (BD integration in Fase 3)
     return DocumentUploadResponse(
-        document_id=document.id,
-        status="pending",
-        job_id=task_result.id,
-        status_url=f"/api/v1/documento/{document.id}/status",
+        document_id=1,
+        status="almacenado",
+        nombre_archivo=file.filename,
+        mensaje=f"Documento '{file.filename}' cargado exitosamente"
+    )
+
+
+@documents_router.get("/{document_id}", response_model=DocumentStatusResponse)
+async def get_document(document_id: int):
+    """
+    Get document information by ID.
+    
+    Args:
+        document_id: Document ID
+        
+    Returns:
+        DocumentStatusResponse with document details
+    """
+    if document_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid document ID"
+        )
+
+    # This would query the database - for now return template
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Document with ID {document_id} not found"
     )
 
 
 @documents_router.get("/{document_id}/status", response_model=DocumentStatusResponse)
 async def get_document_status(document_id: int):
-    """Return current processing status for an uploaded document."""
-    document = db.session.get(HistorialDocumento, document_id)
-    if document is None:
+    """
+    Get document processing status.
+    
+    Args:
+        document_id: Document ID
+        
+    Returns:
+        DocumentStatusResponse with document status
+    """
+    if document_id <= 0:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Document with ID {document_id} not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid document ID"
         )
 
-    return DocumentStatusResponse(
-        document_id=document.id,
-        status=document.estado,
-        created_at=document.created_at.isoformat() if document.created_at else None,
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Document with ID {document_id} not found"
     )
-
-
-def _safe_delete(path: str) -> None:
-    """Delete a temporary file if it exists."""
-    if os.path.exists(path):
-        os.remove(path)

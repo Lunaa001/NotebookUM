@@ -14,4 +14,4 @@ def register_routers(app):
     app.include_router(summaries_router, prefix="/api/v1/summaries", tags=["summaries"])
     app.include_router(intelligence_router, prefix="/api/v1", tags=["intelligence"])
     app.include_router(main_router, tags=["main"])
-    app.include_router(documents_router, prefix="/api/v1/documento", tags=["documents"])
+    app.include_router(documents_router, prefix="/api/v1/documents", tags=["documents"])
