@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.controllers import health_controller
+from app.controllers import register_routers
 from config import settings
 
 app = FastAPI(
@@ -16,8 +16,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Registrar routers
-app.include_router(health_controller.router, prefix="/api/v1", tags=["Health"])
+# Registrar todos los routers
+register_routers(app)
 
 
 @app.get("/")

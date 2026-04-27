@@ -5,7 +5,7 @@ services:
     build:
       context: ../../
       dockerfile: Dockerfile
-    image: notebookum:1.0.0
+    image: notebookum:1.0.1
     ports:
       - "8000:8000"
     environment:
