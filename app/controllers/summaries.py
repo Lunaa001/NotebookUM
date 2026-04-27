@@ -1,26 +1,32 @@
 """Routes for summaries API endpoints"""
 
-from flask import Blueprint, jsonify
-
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+from typing import Optional, Any
 from app.services.summary_service import SummaryService
 
-summaries_bp = Blueprint("summaries", __name__, url_prefix="/api/v1/summaries")
+summaries_router = APIRouter()
 summary_service = SummaryService()
 
 
-@summaries_bp.route("/document/<int:document_id>", methods=["GET"])
-def get_document_summary(document_id: int):
+class SummaryResponse(BaseModel):
+    success: bool
+    data: Optional[Any] = None
+    message: Optional[str] = None
+    documento_id: Optional[int] = None
+
+
+@summaries_router.get("/document/{document_id}", response_model=SummaryResponse)
+async def get_document_summary(document_id: int):
     try:
         summary = summary_service.get_by_id(document_id)
-        return jsonify({"success": True, "data": summary}), 200
+        return SummaryResponse(success=True, data=summary)
     except ValueError as exc:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "message": str(exc),
-                    "documento_id": document_id,
-                }
-            ),
-            404,
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "success": False,
+                "message": str(exc),
+                "documento_id": document_id,
+            }
         )

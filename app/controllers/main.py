@@ -2,20 +2,27 @@ import os
 from urllib.parse import urlparse
 
 import psycopg
-from flask import Blueprint, jsonify
+from fastapi import APIRouter, status
+from pydantic import BaseModel
+from typing import Dict, Optional
 
-main_bp = Blueprint("main", __name__)
-
-
-@main_bp.get("/")
-def index():
-    return jsonify({"message": "NotebookUm API is running 🚀"})
+main_router = APIRouter()
 
 
-@main_bp.get("/health")
-def health():
+class HealthResponse(BaseModel):
+    status: str
+    services: Dict[str, str]
+
+
+@main_router.get("/")
+async def index():
+    return {"message": "NotebookUm API is running 🚀"}
+
+
+@main_router.get("/health", response_model=HealthResponse)
+async def health():
     """Health check endpoint for process and backing services."""
-    status = {"status": "ok", "services": {}}
+    status_info = {"status": "ok", "services": {}}
 
     database_url = os.getenv("DATABASE_URL", "")
 
@@ -23,18 +30,18 @@ def health():
     try:
         dsn = _as_psycopg_dsn(database_url)
         if not dsn:
-            status["services"]["database"] = "not-configured"
+            status_info["services"]["database"] = "not-configured"
         else:
             with psycopg.connect(dsn, connect_timeout=3) as connection:
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT 1")
                     cursor.fetchone()
-            status["services"]["database"] = "ok"
+            status_info["services"]["database"] = "ok"
     except Exception as exc:  # pragma: no cover - defensive health endpoint
-        status["services"]["database"] = f"error: {exc}"
-        status["status"] = "degraded"
+        status_info["services"]["database"] = f"error: {exc}"
+        status_info["status"] = "degraded"
 
-    return jsonify(status), 200
+    return status_info
 
 
 def _as_psycopg_dsn(database_url: str) -> str | None:

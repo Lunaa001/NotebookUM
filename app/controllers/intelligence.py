@@ -1,15 +1,23 @@
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter
+from pydantic import BaseModel
 import os
 import openai
 
-intelligence_bp = Blueprint("intelligence", __name__)
+intelligence_router = APIRouter()
 
 
-@intelligence_bp.post("/api/chat")
-def chat():
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatResponse(BaseModel):
+    response: str
+
+
+@intelligence_router.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
     """Send a message to the Gemma model and return its response"""
-    data = request.get_json()
-    user_message = data.get("message", "")
+    user_message = request.message
     
     # Configure OpenAI client with custom settings
     client = openai.OpenAI(
@@ -27,4 +35,4 @@ def chat():
     
     response_text = completion.choices[0].message.content
     
-    return jsonify({"response": response_text})
+    return ChatResponse(response=response_text)

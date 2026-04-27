@@ -7,7 +7,8 @@ import tempfile
 from pathlib import Path
 
 from celery.exceptions import CeleryError
-from flask import Blueprint, current_app, jsonify, request
+from fastapi import APIRouter, UploadFile, File, Header, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import db
@@ -19,54 +20,85 @@ from app.services.validation import (
     validate_pdf_content_type,
 )
 from app.utils.errors import internal_server_error, not_found
+from config import settings
 
-documents_bp = Blueprint("documents", __name__, url_prefix="/api/v1/documento")
+documents_router = APIRouter()
 
 
-@documents_bp.route("/upload", methods=["POST"])
-def upload_document():
+class DocumentStatusResponse(BaseModel):
+    document_id: int
+    status: str
+    created_at: str | None = None
+
+
+class DocumentUploadResponse(BaseModel):
+    document_id: int
+    status: str
+    job_id: str
+    status_url: str
+
+
+@documents_router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_202_ACCEPTED)
+async def upload_document(
+    file: UploadFile = File(...),
+    x_user_id: str = Header("1")
+):
     """Upload a PDF document and enqueue asynchronous processing."""
-    file = request.files.get("file")
     if file is None or not file.filename:
-        return create_rfc9457_error(
-            detail="A PDF file is required in form field 'file'.",
-            instance="/api/v1/documento/upload",
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A PDF file is required in form field 'file'."
         )
 
     try:
-        validate_pdf_content_type(file)
-        validate_file_size(file, max_size=current_app.config["MAX_UPLOAD_SIZE"])
+        # Read file content to validate
+        content = await file.read()
+        await file.seek(0)
+        
+        # Create a mock object with required attributes for validation
+        class FileWrapper:
+            def __init__(self, upload_file, content):
+                self.upload_file = upload_file
+                self.content = content
+                self.filename = upload_file.filename
+                self.content_type = upload_file.content_type
+                self.content_length = len(content)
+            
+            def stream_seek(self):
+                pass
+        
+        file_wrapper = FileWrapper(file, content)
+        validate_pdf_content_type(file_wrapper)
+        validate_file_size(file_wrapper, max_size=settings.MAX_UPLOAD_SIZE)
     except ValueError as exc:
-        return create_rfc9457_error(
-            detail=str(exc),
-            instance="/api/v1/documento/upload",
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
         )
 
-    user_id = request.headers.get("X-User-ID", "1")
     try:
-        usuario_id = int(user_id)
+        usuario_id = int(x_user_id)
     except ValueError:
-        return create_rfc9457_error(
-            detail="Invalid X-User-ID header value.",
-            instance="/api/v1/documento/upload",
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid X-User-ID header value."
         )
 
-    file.stream.seek(0)
     suffix = Path(file.filename).suffix or ".pdf"
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-            file.save(tmp_file)
+            tmp_file.write(content)
             temp_pdf_path = tmp_file.name
     except OSError:
-        return internal_server_error(
-            detail="Unable to store uploaded file for processing.",
-            instance="/api/v1/documento/upload",
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to store uploaded file for processing."
         )
 
     document = HistorialDocumento(
         usuario_id=usuario_id,
         nombre_archivo=file.filename,
-        tamanio_bytes=file.content_length or Path(temp_pdf_path).stat().st_size,
+        tamanio_bytes=len(content),
         estado="pending",
     )
     try:
@@ -75,9 +107,9 @@ def upload_document():
     except SQLAlchemyError:
         db.session.rollback()
         _safe_delete(temp_pdf_path)
-        return internal_server_error(
-            detail="Unable to persist document metadata.",
-            instance="/api/v1/documento/upload",
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to persist document metadata."
         )
 
     try:
@@ -93,39 +125,33 @@ def upload_document():
         except SQLAlchemyError:
             db.session.rollback()
         _safe_delete(temp_pdf_path)
-        return internal_server_error(
-            detail="Unable to enqueue document processing task.",
-            instance="/api/v1/documento/upload",
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to enqueue document processing task."
         )
 
-    response = {
-        "document_id": document.id,
-        "status": "pending",
-        "job_id": task_result.id,
-        "status_url": f"/api/v1/documento/{document.id}/status",
-    }
-    return jsonify(response), 202
+    return DocumentUploadResponse(
+        document_id=document.id,
+        status="pending",
+        job_id=task_result.id,
+        status_url=f"/api/v1/documento/{document.id}/status",
+    )
 
 
-@documents_bp.route("/<int:document_id>/status", methods=["GET"])
-def get_document_status(document_id: int):
+@documents_router.get("/{document_id}/status", response_model=DocumentStatusResponse)
+async def get_document_status(document_id: int):
     """Return current processing status for an uploaded document."""
     document = db.session.get(HistorialDocumento, document_id)
     if document is None:
-        return not_found(
-            detail=f"Document with ID {document_id} not found",
-            instance=f"/api/v1/documento/{document_id}/status",
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found"
         )
 
-    return (
-        jsonify(
-            {
-                "document_id": document.id,
-                "status": document.estado,
-                "created_at": document.created_at.isoformat() if document.created_at else None,
-            }
-        ),
-        200,
+    return DocumentStatusResponse(
+        document_id=document.id,
+        status=document.estado,
+        created_at=document.created_at.isoformat() if document.created_at else None,
     )
 
 
