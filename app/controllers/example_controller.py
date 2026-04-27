@@ -1,38 +1,43 @@
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Optional, Any
 from ..services.example_service import ExampleService
 
-example_bp = Blueprint('example', __name__)
+example_router = APIRouter()
 example_service = ExampleService()
 
-@example_bp.route('/', methods=['GET'])
-def get_all():
-    data = example_service.get_all()
-    return jsonify({'success': True, 'data': data})
+class ExampleResponse(BaseModel):
+    success: bool
+    data: Optional[Any] = None
+    message: Optional[str] = None
 
-@example_bp.route('/<int:id>', methods=['GET'])
-def get_one(id):
+@example_router.get('/', response_model=ExampleResponse)
+async def get_all():
+    data = example_service.get_all()
+    return ExampleResponse(success=True, data=data)
+
+@example_router.get('/{id}', response_model=ExampleResponse)
+async def get_one(id: int):
     data = example_service.get_by_id(id)
     if data:
-        return jsonify({'success': True, 'data': data})
-    return jsonify({'success': False, 'message': 'Not found'}), 404
+        return ExampleResponse(success=True, data=data)
+    raise HTTPException(status_code=404, detail="Not found")
 
-@example_bp.route('/', methods=['POST'])
-def create():
-    data = request.get_json()
+@example_router.post('/', response_model=ExampleResponse, status_code=201)
+async def create(data: dict):
     result = example_service.create(data)
-    return jsonify({'success': True, 'data': result}), 201
+    return ExampleResponse(success=True, data=result)
 
-@example_bp.route('/<int:id>', methods=['PUT'])
-def update(id):
-    data = request.get_json()
+@example_router.put('/{id}', response_model=ExampleResponse)
+async def update(id: int, data: dict):
     result = example_service.update(id, data)
     if result:
-        return jsonify({'success': True, 'data': result})
-    return jsonify({'success': False, 'message': 'Not found'}), 404
+        return ExampleResponse(success=True, data=result)
+    raise HTTPException(status_code=404, detail="Not found")
 
-@example_bp.route('/<int:id>', methods=['DELETE'])
-def delete(id):
+@example_router.delete('/{id}', response_model=ExampleResponse)
+async def delete(id: int):
     result = example_service.delete(id)
     if result:
-        return jsonify({'success': True, 'message': 'Deleted successfully'})
-    return jsonify({'success': False, 'message': 'Not found'}), 404
+        return ExampleResponse(success=True, message="Deleted successfully")
+    raise HTTPException(status_code=404, detail="Not found")

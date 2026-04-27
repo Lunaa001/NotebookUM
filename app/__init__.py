@@ -1,15 +1,10 @@
-from config import Config
+from fastapi import FastAPI
+from .controllers import register_routers
 
-def create_app(config_class=Config):
-    from flask import Flask
-    from .controllers import register_blueprints
-
-    app = Flask(__name__)
-    app.config.from_object(config_class)
+def create_app():
+    app = FastAPI()
     
-    # Inicializar extensiones aquí si las hay
-    
-    # Registrar blueprints
-    register_blueprints(app)
+    # Registrar routers
+    register_routers(app)
     
     return app

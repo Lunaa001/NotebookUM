@@ -1,7 +1,7 @@
-from .example_controller import example_bp
-from .ai_controller import ai_bp
+from .example_controller import example_router
+from .ai_controller import ai_router
 
 
-def register_blueprints(app):
-    app.register_blueprint(example_bp, url_prefix="/api/example")
-    app.register_blueprint(ai_bp, url_prefix="/api/ai")
+def register_routers(app):
+    app.include_router(example_router, prefix="/api/example", tags=["example"])
+    app.include_router(ai_router, prefix="/api/ai", tags=["ai"])

@@ -1,32 +1,18 @@
 import os
+from pydantic_settings import BaseSettings
+from pydantic import Field
 
-class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'clave-secreta-por-defecto'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', '1', 'yes']
-
-class DevelopmentConfig(Config):
-    DEBUG = True
-
-class ProductionConfig(Config):
-    DEBUG = False
-
-class TestingConfig(Config):
-    TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
-    DEBUG = True
-
-config = {
-    'development': DevelopmentConfig,
-    'production': ProductionConfig,
-    'testing': TestingConfig,
-    'default': DevelopmentConfig
-}
-
-class Settings:
-    VERSION = "1.0.0"
-    APP_NAME = "NotebookUM"
-    ALLOWED_ORIGINS = ["*"]
+class Settings(BaseSettings):
+    SECRET_KEY: str = Field(default="clave-secreta-por-defecto")
+    DATABASE_URL: str = Field(default="sqlite:///app.db")
+    DEBUG: bool = Field(default=True)
+    VERSION: str = "1.0.0"
+    APP_NAME: str = "NotebookUM"
+    ALLOWED_ORIGINS: list = Field(default=["*"])
+    
+    class Config:
+        # Usar variables de entorno pero no leer .env file
+        # Cambiar a json=[\"*\"] en variables de entorno si es necesario
+        case_sensitive = False
 
 settings = Settings()
