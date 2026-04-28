@@ -4,6 +4,40 @@ http:
       redirectScheme:
         scheme: https
         permanent: true
+    
+    # Circuit breaker middleware - detects failures and opens
+    circuit-breaker:
+      circuitBreaker:
+        expression: "NetworkErrorRatio() > 0.5 || (ResponseCodeRatio(500, 502, 503) > 0.3)"
+        check_period: 2s
+        fallback_duration: 30s
+    
+    # Rate limiting - 100 requests per second per IP
+    rate-limit:
+      rateLimit:
+        average: 100
+        period: 1s
+        burst: 50
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+    
+    # Request tracing header
+    request-tracing:
+      headers:
+        customRequestHeaders:
+          X-Service: "NotebookUM-API"
+          X-Environment: "production"
+    
+    # Request/response timeout
+    timeout-handler:
+      forwardauth:
+        # Using timeout in the router instead
+    
+    # Compression middleware
+    compression:
+      compress:
+        minResponseBodyBytes: 1024
 
   routers:
     traefik-http:
@@ -28,6 +62,7 @@ http:
             sans:
               - "*.universidad.local"
 
+    # NotebookUM API with circuit breaker and rate limiting
     notebookum-http:
       rule: "Host(`notebookum.universidad.localhost`)"
       service: "notebookum"
@@ -41,6 +76,11 @@ http:
       service: "notebookum"
       entryPoints:
         - https
+      middlewares:
+        - rate-limit
+        - circuit-breaker
+        - request-tracing
+        - compression
       tls:
         domains:
           - main: "universidad.localhost"
@@ -49,6 +89,9 @@ http:
           - main: "universidad.local"
             sans:
               - "*.universidad.local"
+      timeoutConnect: 10s
+      timeoutRequest: 30s
+      timeoutIdle: 60s
 
     notebookum:
       rule: "Host(`notebookum.universidad.localhost`)"
@@ -56,6 +99,11 @@ http:
       entryPoints:
         - http
         - https
+      middlewares:
+        - rate-limit
+        - circuit-breaker
+        - request-tracing
+        - compression
       tls:
         domains:
           - main: "universidad.localhost"
@@ -64,12 +112,35 @@ http:
           - main: "universidad.local"
             sans:
               - "*.universidad.local"
+      timeoutConnect: 10s
+      timeoutRequest: 30s
+      timeoutIdle: 60s
 
   services:
     notebookum:
       loadBalancer:
         servers:
           - url: "http://notebookum:8000"
+        healthCheck:
+          path: /health
+          interval: 30s
+          timeout: 5s
+          scheme: http
+
+tcp:
+  # PostgreSQL TCP passthrough
+  routers:
+    postgresql:
+      entryPoints:
+        - postgresql
+      service: postgresql
+      rule: "HostSNI(`*`)"
+
+  services:
+    postgresql:
+      loadBalancer:
+        servers:
+          - address: "postgres:5432"
 
 tls:
   stores:

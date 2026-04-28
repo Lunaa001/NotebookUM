@@ -18,12 +18,16 @@ dependencies = [
     "python-multipart>=0.0.7",
     "docling>=1.0.0",
     "pillow-heif>=0.16.0",
+    "pybreaker>=1.4.0",
+    "redis>=5.0.0",
+    "hiredis>=3.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "locust>=2.20.0",
 ]
 
 [tool.setuptools.packages.find]

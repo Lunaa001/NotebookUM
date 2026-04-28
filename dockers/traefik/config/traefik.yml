@@ -21,9 +21,9 @@ log:
   format: common
 
 entryPoints:
-  redis:
-    address: ":6379"
   http:
     address: ":80"
   https:
     address: ":443"
+  postgresql:
+    address: ":5432"

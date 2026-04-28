@@ -3,6 +3,10 @@
 import requests
 from typing import Optional
 import os
+import logging
+from app.services.circuit_breaker_service import CircuitBreakerFactory
+
+logger = logging.getLogger(__name__)
 
 
 class AIService:
@@ -11,19 +15,28 @@ class AIService:
     # UM AI Cloud configuration
     API_BASE_URL = "https://ai.cloud.um.edu.ar/api/v1"
     MODEL = "gemma4-26b-16g"
+    CIRCUIT_BREAKER_NAME = "gemma4_api"
     
     def __init__(self, api_key: Optional[str] = None):
         """
-        Initialize AI Service with API key
+        Initialize AI Service with API key and Circuit Breaker
         
         Args:
             api_key: UM AI API key (or from env variable GEMMA4_API_KEY)
         """
         self.api_key = api_key or os.getenv("GEMMA4_API_KEY")
+        # Initialize circuit breaker for API calls
+        # fail_max=5: Open after 5 failures
+        # reset_timeout=30: Wait 30s before attempting recovery
+        self.circuit_breaker = CircuitBreakerFactory.get_or_create(
+            name=self.CIRCUIT_BREAKER_NAME,
+            fail_max=5,
+            reset_timeout=30,
+        )
     
     def generate_summary(self, text: str, max_tokens: int = 200) -> str:
         """
-        Generate a summary of the provided text using Gemma4
+        Generate a summary of the provided text using Gemma4 with Circuit Breaker protection
         
         Args:
             text: Text to summarize
@@ -33,7 +46,7 @@ class AIService:
             Generated summary
         
         Raises:
-            ValueError: If API call fails or no API key available
+            ValueError: If API call fails, circuit is open, or no API key available
         """
         if not self.api_key:
             raise ValueError("GEMMA4_API_KEY not provided or found in environment")
@@ -41,6 +54,27 @@ class AIService:
         if not text or text.strip() == "":
             raise ValueError("Text to summarize cannot be empty")
         
+        # Execute with circuit breaker protection
+        try:
+            return self.circuit_breaker.call(self._call_api, text, max_tokens)
+        except Exception as e:
+            logger.error(f"Failed to generate summary: {str(e)}")
+            raise
+    
+    def _call_api(self, text: str, max_tokens: int) -> str:
+        """
+        Internal method to call Gemma4 API (wrapped by circuit breaker)
+        
+        Args:
+            text: Text to summarize
+            max_tokens: Maximum tokens in the response
+            
+        Returns:
+            Generated summary
+            
+        Raises:
+            ValueError: If API call fails
+        """
         # Craft the prompt for summarization
         prompt = f"""Genera un resumen conciso y claro del siguiente texto. 
 El resumen debe ser breve pero completo, capturando los puntos principales.
@@ -96,7 +130,7 @@ RESUMEN:"""
     
     def test_connection(self) -> bool:
         """
-        Test if API connection works
+        Test if API connection works with Circuit Breaker protection
         
         Returns:
             True if connection successful
@@ -107,6 +141,19 @@ RESUMEN:"""
         if not self.api_key:
             raise ValueError("GEMMA4_API_KEY not provided or found in environment")
         
+        # Execute with circuit breaker protection
+        return self.circuit_breaker.call(self._test_connection_api)
+    
+    def _test_connection_api(self) -> bool:
+        """
+        Internal method to test API connection (wrapped by circuit breaker)
+        
+        Returns:
+            True if connection successful
+            
+        Raises:
+            ValueError: If connection fails
+        """
         try:
             response = requests.post(
                 f"{self.API_BASE_URL}/chat/completions",
