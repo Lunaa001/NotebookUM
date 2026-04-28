@@ -22,14 +22,18 @@ class TestAIService:
     
     def test_ai_service_initialization_missing_key(self):
         """Test AIService initializes without key (error on API call)"""
-        service = AIService(api_key=None)  # Won't error until API call
-        assert service.api_key is None
+        # Mock os.getenv in ai_service module to ensure GEMMA4_API_KEY is not found
+        with patch('app.services.ai_service.os.getenv', return_value=None):
+            service = AIService(api_key=None)  # Won't error until API call
+            assert service.api_key is None
     
     def test_generate_summary_no_key_raises_error(self):
         """Test that generate_summary raises error when no API key"""
-        service = AIService(api_key=None)
-        with pytest.raises(ValueError, match="GEMMA4_API_KEY"):
-            service.generate_summary("Test text")
+        # Mock os.getenv in ai_service module to ensure GEMMA4_API_KEY is not found
+        with patch('app.services.ai_service.os.getenv', return_value=None):
+            service = AIService(api_key=None)
+            with pytest.raises(ValueError, match="GEMMA4_API_KEY"):
+                service.generate_summary("Test text")
     
     def test_generate_summary_empty_text_raises_error(self, ai_service):
         """Test that empty text raises ValueError"""
