@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import os
-import tempfile
 from pathlib import Path
 from datetime import datetime
 
-from fastapi import APIRouter, UploadFile, File, Header, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Header, HTTPException, status, Depends
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import Session
 
-from app.models import Document, Usuario
+from app.database import get_session
+from app.services.document_service import DocumentService
+from app.services.storage_service import StorageService
+from app.services.pdf_extraction_service import PDFExtractionService
 from config import settings
 
 documents_router = APIRouter()
@@ -21,130 +24,204 @@ class DocumentUploadResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
     document_id: int
-    status: str
     nombre_archivo: str
-    mensaje: str = "Documento almacenado exitosamente"
+    status: str = "almacenado"
+    mensaje: str = "Documento almacenado y procesado exitosamente"
 
 
-class DocumentStatusResponse(BaseModel):
-    """Response model for document status"""
+class DocumentResponse(BaseModel):
+    """Response model for document details"""
     model_config = ConfigDict(from_attributes=True)
     
-    document_id: int
-    nombre_archivo: str
+    id: int
     usuario_id: int
-    estado: str = "almacenado"
+    nombre_archivo: str
+    texto_extraido: str | None = None
     fecha_creacion: str
 
 
 @documents_router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
-    x_user_id: str = Header("1")
+    x_user_id: str = Header("1"),
+    session: Session = Depends(get_session)
 ):
     """
-    Upload a document and store it.
+    Upload a PDF document, extract text, and store it.
     
     Args:
-        file: PDF or document file
-        x_user_id: User ID header
+        file: PDF file to upload
+        x_user_id: User ID from header
+        session: Database session
         
     Returns:
         DocumentUploadResponse with document info
     """
-    if file is None or not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A file is required in form field 'file'."
-        )
-
     try:
-        usuario_id = int(x_user_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid X-User-ID header value."
+        if file is None or not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A PDF file is required in form field 'file'."
+            )
+
+        try:
+            usuario_id = int(x_user_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid X-User-ID header value."
+            )
+
+        # Read file content
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is empty."
+            )
+        
+        if len(content) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File size exceeds maximum allowed: {settings.MAX_UPLOAD_SIZE} bytes"
+            )
+
+        # Validate PDF
+        if not PDFExtractionService.validate_pdf(content):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File must be a valid PDF."
+            )
+
+        # Save file
+        storage = StorageService()
+        file_path = storage.save_file(content, file.filename)
+
+        # Extract text from PDF
+        try:
+            texto_extraido = PDFExtractionService.extract_text(file_path, max_pages=10)
+        except ValueError as e:
+            storage.delete_file(file_path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Error processing PDF: {str(e)}"
+            )
+
+        # Create document in database
+        doc_service = DocumentService(session)
+        documento = doc_service.create({
+            "usuario_id": usuario_id,
+            "nombre_archivo": file.filename,
+            "ruta_archivo": file_path,
+            "texto_extraido": texto_extraido,
+        })
+
+        return DocumentUploadResponse(
+            document_id=documento.id,
+            nombre_archivo=documento.nombre_archivo,
+            status="almacenado",
         )
 
-    # Validate file exists
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File is empty."
-        )
-    
-    if len(content) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File size exceeds maximum allowed: {settings.MAX_UPLOAD_SIZE} bytes"
-        )
-    
-    await file.seek(0)
-
-    # Create temporary file for storage
-    suffix = Path(file.filename).suffix or ".pdf"
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir="uploads") as tmp_file:
-            tmp_file.write(content)
-            temp_path = tmp_file.name
-    except OSError as e:
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error uploading document: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unable to store file: {str(e)}"
+            detail="Error processing document"
         )
-
-    # Simulated response (BD integration in Fase 3)
-    return DocumentUploadResponse(
-        document_id=1,
-        status="almacenado",
-        nombre_archivo=file.filename,
-        mensaje=f"Documento '{file.filename}' cargado exitosamente"
-    )
+    finally:
+        session.close()
 
 
-@documents_router.get("/{document_id}", response_model=DocumentStatusResponse)
-async def get_document(document_id: int):
+@documents_router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: int,
+    session: Session = Depends(get_session)
+):
     """
     Get document information by ID.
     
     Args:
         document_id: Document ID
+        session: Database session
         
     Returns:
-        DocumentStatusResponse with document details
+        DocumentResponse with document details
     """
-    if document_id <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid document ID"
+    try:
+        if document_id <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid document ID"
+            )
+
+        doc_service = DocumentService(session)
+        documento = doc_service.get_by_id(document_id)
+
+        return DocumentResponse(
+            id=documento.id,
+            usuario_id=documento.usuario_id,
+            nombre_archivo=documento.nombre_archivo,
+            texto_extraido=documento.texto_extraido,
+            fecha_creacion=documento.fecha_creacion.isoformat() if documento.fecha_creacion else None,
         )
 
-    # This would query the database - for now return template
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Document with ID {document_id} not found"
-    )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Error getting document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving document"
+        )
+    finally:
+        session.close()
 
 
-@documents_router.get("/{document_id}/status", response_model=DocumentStatusResponse)
-async def get_document_status(document_id: int):
+@documents_router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: int,
+    session: Session = Depends(get_session)
+):
     """
-    Get document processing status.
+    Delete a document.
     
     Args:
         document_id: Document ID
-        
-    Returns:
-        DocumentStatusResponse with document status
+        session: Database session
     """
-    if document_id <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid document ID"
-        )
+    try:
+        if document_id <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid document ID"
+            )
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Document with ID {document_id} not found"
-    )
+        doc_service = DocumentService(session)
+        documento = doc_service.get_by_id(document_id)
+        
+        # Delete file from storage
+        storage = StorageService()
+        if documento.ruta_archivo:
+            storage.delete_file(documento.ruta_archivo)
+
+        # Delete from database
+        doc_service.delete(document_id)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Error deleting document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error deleting document"
+        )
+    finally:
+        session.close()
