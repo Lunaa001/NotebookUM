@@ -14,6 +14,8 @@ from app.database import get_session
 from app.services.document_service import DocumentService
 from app.services.storage_service import StorageService
 from app.services.pdf_extraction_service import PDFExtractionService
+from app.services.ai_service import AIService
+from app.services.summary_service import SummaryService
 from config import settings
 
 documents_router = APIRouter()
@@ -38,6 +40,20 @@ class DocumentResponse(BaseModel):
     nombre_archivo: str
     texto_extraido: str | None = None
     fecha_creacion: str
+
+
+class SummaryGenerationRequest(BaseModel):
+    """Request model for generating a summary"""
+    max_tokens: int = 300
+
+
+class SummaryResponse(BaseModel):
+    """Response model for summary generation"""
+    document_id: int
+    status: str
+    resumen: str
+    resumen_longitud: int
+    mensaje: str = "Resumen generado exitosamente"
 
 
 @documents_router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
@@ -222,6 +238,98 @@ async def delete_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error deleting document"
+        )
+    finally:
+        session.close()
+
+
+@documents_router.post("/{document_id}/summary", response_model=SummaryResponse, status_code=status.HTTP_200_OK)
+async def generate_document_summary(
+    document_id: int,
+    request: SummaryGenerationRequest,
+    session: Session = Depends(get_session)
+):
+    """
+    Generate and store AI summary for a document.
+    
+    Args:
+        document_id: Document ID
+        request: Summary generation request with max_tokens
+        session: Database session
+        
+    Returns:
+        SummaryResponse with generated summary
+    """
+    try:
+        if document_id <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid document ID"
+            )
+
+        # Get document
+        doc_service = DocumentService(session)
+        documento = doc_service.get_by_id(document_id)
+
+        # Check if document has extracted text
+        if not documento.texto_extraido or not documento.texto_extraido.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document has no extracted text for summarization"
+            )
+
+        # Generate summary using AIService and SummaryService
+        ai_service = AIService(api_key=os.getenv("GEMMA4_API_KEY"))
+        summary_service = SummaryService(ai_service=ai_service)
+
+        # Check if summarization is feasible
+        if not summary_service.should_generate_summary(documento.texto_extraido):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document text too short for meaningful summarization (minimum 100 characters)"
+            )
+
+        # Generate summary
+        try:
+            resumen = summary_service.generate_summary(
+                document_text=documento.texto_extraido,
+                max_tokens=request.max_tokens
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error generating summary: {str(e)}"
+            )
+
+        # Store summary in database
+        documento.resumen = resumen
+        session.commit()
+
+        return SummaryResponse(
+            document_id=documento.id,
+            status="generado",
+            resumen=resumen,
+            resumen_longitud=len(resumen),
+            mensaje="Resumen generado exitosamente"
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating summary"
         )
     finally:
         session.close()

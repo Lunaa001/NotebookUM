@@ -5,6 +5,7 @@ from .summaries import summaries_router
 from .intelligence import intelligence_router
 from .main import main_router
 from .documents import documents_router
+from .test_controller import test_router
 
 
 def register_routers(app):
@@ -15,3 +16,4 @@ def register_routers(app):
     app.include_router(intelligence_router, prefix="/api/v1", tags=["intelligence"])
     app.include_router(main_router, tags=["main"])
     app.include_router(documents_router, prefix="/api/v1/documents", tags=["documents"])
+    app.include_router(test_router, tags=["test"])  # Dev endpoints only

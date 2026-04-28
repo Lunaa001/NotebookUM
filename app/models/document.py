@@ -13,6 +13,7 @@ class Document(Base):
     nombre_archivo = Column(String(255), nullable=False)
     ruta_archivo = Column(String(500), nullable=False)
     texto_extraido = Column(Text, nullable=True)
+    resumen = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # Relationship

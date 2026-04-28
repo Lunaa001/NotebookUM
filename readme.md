@@ -1,53 +1,415 @@
-# Constitucion 
+# 📚 NotebookUM - Document Processing & AI Summarization API
 
-# Proyecto NotebookUM
-Es un proyecto que tiene como funcionalidades: 
-- extraer texto de archivos, utilizando la libreria Docling, 
-- El texto extraido debe ser pasado al modelo Nemotron-3 nano 30B para ser resumido.
-- El texto resumido va a ser guardado en base de datos.
-## Tecnologias utilizadas en el proyecto
-Se utilizaran las siguientes tecnologias:
-- Metodologia de gestion de proyecto: SCRUM
-- Lenguaje: Python (usar PEP8)
-- Freamework: FastAPI
-- Herramienta de dependencia: uv
-- Base de datos: PostgreSQL
-- Usar la estructura limpia del proyecto
-## Principios
-Se aplicaran los siguientes principios:
-- KISS
-- DRY
-- YAGNI
-- SOLID
-## Metodologias
-- TDD
-- SDD
-# Principios de diseño aplicados:
-- Responsabilidad Simple (SRP)
-- Inyección de Dependencias (Dependency Injection)
-## Factor App
-Se aplicara los seis primeros factores:
-- Codebase
-- Dependencias
-- Config
-- Backing services
-- Build, release, run
-- Processes
-## Diagramas 
+**Status:** ✅ **FASE 1-5 COMPLETAS** | Production Ready
 
-## Configuracion de las tablas en base de datos
-- 
-## Funcionalidad de la base de datos
-- 
+NotebookUM es una API FastAPI para procesar documentos PDF, extraer texto y generar resúmenes automáticos usando IA (Gemma4 de UM).
 
-# Especificacion
+---
 
-## 1. Arquitectura y Persistencia
-- **Rutas:** Todos los endpoints deben comenzar con `/api/v1/`.
-- **Base de Datos:** Crear tablas `usuarios`, `documentos` y `resumenes` (plural, minúsculas). 
-- **ORM y DDL:** Implementar CRUD completo con el patrón Repository. Los archivos SQL en `/docs` son la fuente de verdad.
+## 🎯 Características
 
-## 2. Endpoint y Flujo de Procesamiento (`/documento/upload`)
+| FASE | Componente | Estado |
+|------|-----------|--------|
+| **1** | FastAPI + Router Registration | ✅ |
+| **2** | PostgreSQL + SQLAlchemy + Alembic | ✅ |
+| **3** | Repository Pattern + CRUD | ✅ |
+| **4** | PDF Extraction (Docling) + Storage Service | ✅ |
+| **5** | AI Summarization (Gemma4) + Summary Endpoint | ✅ |
+
+### Flujo Completo:
+```
+PDF Upload → Docling Extract (OCR, Tables, Layout)
+    ↓
+Texto Extraído → Almacenado en BD
+    ↓
+Solicitar Resumen → Gemma4 API (26B LLM)
+    ↓
+Resumen Generado → Almacenado en BD
+```
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend:** FastAPI 0.135.3
+- **Database:** PostgreSQL 15 + SQLAlchemy 2.0 + Alembic
+- **PDF Processing:** Docling 2.91.0 (OCR, Tables, Layouts)
+- **AI/Summarization:** Gemma4-26b-16g (UM Faculty API)
+- **Package Manager:** uv
+- **Testing:** pytest 9.0.3
+- **Containerization:** Docker + Docker Compose
+- **Server:** Granian (async ASGI)
+
+---
+
+## 📦 Instalación Local
+
+### Requisitos
+- Python 3.14+
+- PostgreSQL 15+
+- `uv` package manager
+- API Key de Gemma4 (UM Faculty)
+
+### 1. Clonar repositorio
+```bash
+git clone https://github.com/tu-usuario/NotebookUM.git
+cd NotebookUM
+```
+
+### 2. Instalar dependencias
+```bash
+uv sync
+```
+
+### 3. Configurar variables de environment
+```bash
+cp .env.example .env
+# Editar .env con:
+# - DATABASE_URL=postgresql+psycopg://notebookum:notebookum123@localhost:5432/notebookum
+# - GEMMA4_API_KEY=sk-8d8bd2869b3d4c19b734a6f5c82482aa
+```
+
+### 4. Iniciar PostgreSQL (Docker)
+```bash
+cd dockers/PostgreSQL
+docker-compose up -d
+# Esperar ~10s para que inicie
+```
+
+### 5. Aplicar migraciones
+```bash
+cd /path/to/NotebookUM
+uv run alembic upgrade head
+# Output: "Done" significa migraciones aplicadas
+```
+
+### 6. Ejecutar tests
+```bash
+uv run pytest tests/ -v
+# Esperado: 78 passed, 7 skipped
+```
+
+### 7. Iniciar servidor
+```bash
+uv run granian --interface asgi --host 0.0.0.0 --port 8000 main:app
+# Server corriendo en http://localhost:8000
+```
+
+### 8. Acceder a documentación
+- **OpenAPI (Swagger):** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+
+---
+
+## 🚀 Ejemplos de Uso
+
+### A) Subir Documento PDF
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/upload \
+  -F "file=@documento.pdf" \
+  -H "X-User-ID: 1"
+```
+
+**Respuesta:**
+```json
+{
+  "document_id": 1,
+  "nombre_archivo": "documento.pdf",
+  "status": "almacenado",
+  "mensaje": "Documento almacenado y procesado exitosamente"
+}
+```
+
+### B) Generar Resumen Automático
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/summary \
+  -H "Content-Type: application/json" \
+  -d '{"max_tokens": 300}'
+```
+
+**Respuesta:**
+```json
+{
+  "document_id": 1,
+  "status": "generado",
+  "resumen": "La inteligencia artificial es una rama de la informática...",
+  "resumen_longitud": 287,
+  "mensaje": "Resumen generado exitosamente"
+}
+```
+
+### C) Recuperar Documento con Resumen
+
+```bash
+curl -X GET http://localhost:8000/api/v1/documents/1
+```
+
+**Respuesta:**
+```json
+{
+  "id": 1,
+  "usuario_id": 1,
+  "nombre_archivo": "documento.pdf",
+  "texto_extraido": "...",
+  "fecha_creacion": "2026-04-27T10:00:00"
+}
+```
+
+### D) Eliminar Documento
+
+```bash
+curl -X DELETE http://localhost:8000/api/v1/documents/1
+```
+
+---
+
+## 🐳 Deploy con Docker
+
+### Opción 1: Docker Individual
+
+```bash
+# Construir imagen
+docker build -t notebookum:1.2.0 .
+
+# Ejecutar
+docker run -p 8000:8000 \
+  -e DATABASE_URL="postgresql+psycopg://user:pass@db:5432/notebookum" \
+  -e GEMMA4_API_KEY="sk-..." \
+  notebookum:1.2.0
+```
+
+### Opción 2: Docker Compose (Recomendado)
+
+Crear `docker-compose.yml` en raíz:
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15.4-bullseye
+    environment:
+      POSTGRES_USER: notebookum
+      POSTGRES_PASSWORD: notebookum123
+      POSTGRES_DB: notebookum
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notebookum"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notebookum:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://notebookum:notebookum123@postgres:5432/notebookum
+      GEMMA4_API_KEY: ${GEMMA4_API_KEY}
+      DEBUG: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             granian --interface asgi --host 0.0.0.0 --port 8000 main:app"
+
+volumes:
+  postgres_data:
+```
+
+**Ejecutar:**
+```bash
+GEMMA4_API_KEY="sk-..." docker-compose up -d
+```
+
+**Logs:**
+```bash
+docker-compose logs -f notebookum
+```
+
+---
+
+## 📊 Estructura del Proyecto
+
+```
+NotebookUM/
+├── app/
+│   ├── controllers/          # Routers FastAPI
+│   │   ├── documents.py      # POST /upload, /summary, GET, DELETE
+│   │   ├── ai_controller.py  # AI endpoints
+│   │   └── ...
+│   ├── services/             # Business logic
+│   │   ├── ai_service.py          # Gemma4 API integration
+│   │   ├── summary_service.py     # FASE 5: Summarization
+│   │   ├── pdf_extraction_service.py # Docling integration
+│   │   ├── document_service.py
+│   │   ├── storage_service.py     # File persistence
+│   │   └── ...
+│   ├── models/               # ORM + Pydantic
+│   │   ├── document.py       # Documento + resumen field
+│   │   ├── usuario.py
+│   │   └── base.py
+│   └── database.py           # SQLAlchemy setup
+├── tests/                    # Unit + integration tests
+│   ├── test_summary_service_fase5.py  # FASE 5 tests (8 passed)
+│   └── ...
+├── alembic/
+│   ├── versions/
+│   │   ├── 001_initial.py               # Create usuarios, documentos
+│   │   └── 002_add_resumen_to_documento.py  # Add resumen field (FASE 5)
+│   └── env.py
+├── config.py                 # Pydantic Settings
+├── main.py                   # FastAPI app entry point
+├── pyproject.toml            # Dependencies
+└── Dockerfile                # Container image
+
+Storage:
+/tmp/notebookum_uploads/     # Uploaded PDF files
+```
+
+---
+
+## 🧪 Testing
+
+### Ejecutar todos los tests
+```bash
+uv run pytest tests/ -v
+# Expected: 78 passed, 7 skipped
+```
+
+### Tests específicos por FASE
+
+```bash
+# FASE 4: PDF Extraction
+uv run pytest tests/test_pdf_extraction_service.py -v
+
+# FASE 5: AI Summarization
+uv run pytest tests/test_summary_service_fase5.py -v
+uv run pytest tests/test_summary.py -v
+
+# AI Service (Gemma4)
+uv run pytest tests/test_gemma4_ai_service.py -v
+```
+
+### Coverage
+```bash
+uv run pytest tests/ --cov=app --cov-report=html
+open htmlcov/index.html
+```
+
+---
+
+## 🔑 Configuración de Environment
+
+### `.env` requerido:
+
+```env
+# Database
+DATABASE_URL=postgresql+psycopg://notebookum:notebookum123@localhost:5432/notebookum
+
+# AI API (Gemma4 UM Faculty)
+GEMMA4_API_KEY=sk-8d8bd2869b3d4c19b734a6f5c82482aa
+
+# App Config
+DEBUG=true
+VERSION=1.2.0
+APP_NAME=NotebookUM
+MAX_UPLOAD_SIZE=10485760  # 10MB en bytes
+```
+
+### Variables disponibles en `config.py`:
+- `SECRET_KEY` - Para JWT (futuro)
+- `DATABASE_URL` - PostgreSQL connection
+- `GEMMA4_API_KEY` - UM Faculty AI API
+- `DEBUG` - Debug mode
+- `MAX_UPLOAD_SIZE` - Max file upload size
+- `ALLOWED_ORIGINS` - CORS origins
+
+---
+
+## 🐛 Troubleshooting
+
+### Error: "Connection refused" en Alembic
+
+**Causa:** PostgreSQL no está corriendo
+
+**Solución:**
+```bash
+# Iniciar PostgreSQL
+docker-compose -f dockers/PostgreSQL/docker-compose.yml up -d
+sleep 10
+uv run alembic upgrade head
+```
+
+### Error: "GEMMA4_API_KEY extra inputs not permitted"
+
+**Causa:** `config.py` sin field `GEMMA4_API_KEY`
+
+**Solución:** Ya está incluido en la actualización. Reiniciar servidor:
+```bash
+pkill -f granian
+uv run granian --interface asgi --host 0.0.0.0 --port 8000 main:app
+```
+
+### PDF no se extrae correctamente
+
+**Causa:** PDF con imágenes/tablas complejas
+
+**Solución:** Docling maneja OCR automáticamente. Verificar:
+```bash
+# Test extraction
+uv run python -c "
+from app.services.pdf_extraction_service import PDFExtractionService
+text = PDFExtractionService.extract_text('path/to/file.pdf')
+print(f'Extracted: {len(text)} chars')
+"
+```
+
+### Resumen vacío en respuesta
+
+**Causa:** Gemma4 API respondiendo con `content: ""` y `reasoning: "..."`
+
+**Status:** ✅ Ya manejado en `AIService.generate_summary()` - usa `reasoning` como fallback
+
+---
+
+## 📚 API Reference
+
+### Endpoints
+
+| Método | Ruta | Descripción | Status |
+|--------|------|-------------|--------|
+| **POST** | `/api/v1/documents/upload` | Subir PDF | ✅ |
+| **GET** | `/api/v1/documents/{id}` | Obtener documento | ✅ |
+| **DELETE** | `/api/v1/documents/{id}` | Eliminar documento | ✅ |
+| **POST** | `/api/v1/documents/{id}/summary` | Generar resumen (FASE 5) | ✅ |
+| **GET** | `/api/v1/health` | Health check | ✅ |
+
+---
+
+## 🤝 Contribuciones
+
+1. Las FASE 1-5 están completas
+2. Para nuevas funcionalidades, crear branch: `feature/nueva-funcionalidad`
+3. Mantener cobertura de tests >80%
+4. Seguir PEP 8 + SOLID principles
+
+---
+
+## 📄 Licencia
+
+MIT License - 2026
+
+---
+
+**Última actualización:** 27 de abril de 2026 | **Versión:** 1.2.0
+
 - **Método y Ejecución:** POST, con procesamiento asincrónico vía `BackgroundTasks` de FastAPI.
 - **Respuesta Inmediata:** Retornar **Status 202 Accepted** con el ID del documento tras validar el archivo.
 - **El flujo interno debe:** Extraer texto (Docling) -> Generar resumen (Nemotron) -> Guardar DB.

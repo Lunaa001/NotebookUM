@@ -1,92 +1,93 @@
+"""
+Tests for SummaryService - Updated for FASE 5 AI Integration
+"""
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from app.services.summary_service import SummaryService
+from app.services.ai_service import AIService
 
 
-class TestSummary(unittest.TestCase):
-    @patch("app.services.summary_service.DocumentRepository")
-    @patch("app.services.summary_service.SummaryRepository")
-    def test_create_summary_returns_created_summary(self, summary_repo_cls, document_repo_cls):
-        summary_repo = summary_repo_cls.return_value
-        document_repo = document_repo_cls.return_value
-        document_repo.exists.return_value = True
-        summary_repo.create.return_value = {
-            "id": 1,
-            "documento_id": 10,
-            "contenido": "Resumen inicial",
+class TestSummaryServiceFASE5(unittest.TestCase):
+    """Tests for the new AI-based SummaryService (FASE 5)"""
+    
+    def test_summary_service_initialization(self):
+        """Test SummaryService can be initialized without AI service"""
+        service = SummaryService()
+        self.assertIsNone(service.ai_service)
+    
+    def test_summary_service_initialization_with_ai_service(self):
+        """Test SummaryService can be initialized with AI service"""
+        ai_service = AIService(api_key="test-key")
+        service = SummaryService(ai_service=ai_service)
+        self.assertIsNotNone(service.ai_service)
+    
+    def test_generate_summary_requires_ai_service(self):
+        """Test generate_summary raises error without AI service"""
+        service = SummaryService()  # No AI service
+        
+        with self.assertRaises(RuntimeError) as context:
+            service.generate_summary("Test text")
+        
+        self.assertIn("AIService not initialized", str(context.exception))
+    
+    def test_generate_summary_rejects_empty_text(self):
+        """Test generate_summary rejects empty text"""
+        ai_service = AIService(api_key="test-key")
+        service = SummaryService(ai_service=ai_service)
+        
+        with self.assertRaises(ValueError) as context:
+            service.generate_summary("")
+        
+        self.assertIn("cannot be empty", str(context.exception))
+    
+    def test_should_generate_summary_returns_false_for_short_text(self):
+        """Test should_generate_summary returns False for short text"""
+        service = SummaryService()
+        result = service.should_generate_summary("short", min_length=100)
+        self.assertFalse(result)
+    
+    def test_should_generate_summary_returns_true_for_long_text(self):
+        """Test should_generate_summary returns True for long text"""
+        service = SummaryService()
+        long_text = "a" * 200  # 200 characters
+        result = service.should_generate_summary(long_text, min_length=100)
+        self.assertTrue(result)
+    
+    def test_should_generate_summary_returns_false_for_none(self):
+        """Test should_generate_summary returns False for None"""
+        service = SummaryService()
+        result = service.should_generate_summary(None)
+        self.assertFalse(result)
+    
+    @patch('app.services.ai_service.requests.post')
+    def test_generate_summary_with_mocked_api(self, mock_post):
+        """Test generate_summary calls AI service correctly"""
+        # Mock API response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "Generated summary text",
+                        "reasoning": ""
+                    }
+                }
+            ]
         }
-        service = SummaryService()
-
-        created = service.create({"documento_id": 10, "contenido": "Resumen inicial"})
-
-        self.assertEqual(created["id"], 1)
-        summary_repo.create.assert_called_once_with(
-            documento_id=10,
-            contenido="Resumen inicial",
-        )
-
-    def test_create_summary_requires_documento_id_and_contenido(self):
-        service = SummaryService()
-
-        with self.assertRaises(ValueError):
-            service.create({"documento_id": 10})
-
-    @patch("app.services.summary_service.DocumentRepository")
-    @patch("app.services.summary_service.SummaryRepository")
-    def test_create_summary_fails_when_document_not_exists(self, summary_repo_cls, document_repo_cls):
-        document_repo = document_repo_cls.return_value
-        document_repo.exists.return_value = False
-        service = SummaryService()
-
-        with self.assertRaises(ValueError):
-            service.create({"documento_id": 999, "contenido": "Resumen"})
-        summary_repo_cls.return_value.create.assert_not_called()
-
-    @patch("app.services.summary_service.SummaryRepository")
-    def test_get_summary_by_id_returns_summary(self, summary_repo_cls):
-        summary_repo = summary_repo_cls.return_value
-        summary_repo.get_by_id.return_value = {"id": 1, "documento_id": 10, "contenido": "Resumen"}
-        service = SummaryService()
-
-        summary = service.get_by_id(1)
-
-        self.assertEqual(summary["id"], 1)
-        summary_repo.get_by_id.assert_called_once_with(1)
-
-    @patch("app.services.summary_service.SummaryRepository")
-    def test_get_summary_by_id_raises_error_when_not_found(self, summary_repo_cls):
-        summary_repo = summary_repo_cls.return_value
-        summary_repo.get_by_id.return_value = None
-        service = SummaryService()
-
-        with self.assertRaises(ValueError):
-            service.get_by_id(999)
-
-    @patch("app.services.summary_service.SummaryRepository")
-    def test_update_summary_returns_updated_summary(self, summary_repo_cls):
-        summary_repo = summary_repo_cls.return_value
-        summary_repo.get_by_id.return_value = {"id": 1, "documento_id": 10, "contenido": "Viejo"}
-        summary_repo.update.return_value = {"id": 1, "documento_id": 10, "contenido": "Nuevo"}
-        service = SummaryService()
-
-        updated = service.update(1, {"contenido": "Nuevo"})
-
-        self.assertEqual(updated["contenido"], "Nuevo")
-        summary_repo.update.assert_called_once_with(1, contenido="Nuevo")
-
-    @patch("app.services.summary_service.SummaryRepository")
-    def test_delete_summary_returns_true_when_deleted(self, summary_repo_cls):
-        summary_repo = summary_repo_cls.return_value
-        summary_repo.get_by_id.return_value = {"id": 1, "documento_id": 10, "contenido": "Resumen"}
-        summary_repo.delete.return_value = True
-        service = SummaryService()
-
-        deleted = service.delete(1)
-
-        self.assertTrue(deleted)
-        summary_repo.delete.assert_called_once_with(1)
+        mock_post.return_value = mock_response
+        
+        ai_service = AIService(api_key="test-key")
+        service = SummaryService(ai_service=ai_service)
+        
+        test_text = "Python is a great language. " * 10
+        summary = service.generate_summary(test_text, max_tokens=100)
+        
+        self.assertIsNotNone(summary)
+        self.assertIsInstance(summary, str)
 
 
 if __name__ == "__main__":
     unittest.main()
+
