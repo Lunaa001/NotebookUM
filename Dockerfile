@@ -1,68 +1,51 @@
-FROM python:3.13-slim-trixie AS base
+# Stage 1: Builder - Install dependencies with uv
+FROM python:3.13-slim AS builder
 
-ENV HOST=0.0.0.0
-ENV PORT=8000
-ENV DATABASE_URL=postgresql+psycopg://notebookum:notebookum123@db:5432/notebookum
-ENV GEMMA4_API_KEY=
-ENV DEBUG=false
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    VIRTUAL_ENV=/opt/venv
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV UV_LINK_MODE=copy
-ENV UV_COMPILE_BYTECODE=1
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN useradd --create-home --home-dir /home/app app
+WORKDIR /build
 
-WORKDIR /home/app
+RUN pip install --no-cache-dir uv
 
-RUN apt-get update 
-RUN apt-get install -y curl build-essential ca-certificates
-RUN apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
-RUN rm -rf /var/lib/apt/lists/*
+COPY pyproject.toml uv.lock* ./
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN uv venv /opt/venv && \
+    uv pip install --no-cache-dir . granian
 
-USER app
+# Stage 2: Runtime
+FROM python:3.13-slim
 
-# ============ DEV STAGE (con pytest y dependencias de desarrollo) ============
-FROM base AS dev
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000 \
+    VIRTUAL_ENV=/opt/venv
 
-COPY pyproject.toml ./
-COPY uv.lock* ./
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Instalar TODAS las dependencias (incluyendo dev para tests)
-RUN if [ -f uv.lock ]; then \
-        uv sync --frozen; \
-    else \
-        uv sync; \
-    fi
+WORKDIR /app
 
-COPY . .
+# Crear usuario sin root
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-EXPOSE 8000
+# Copiar venv del builder
+COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
 
-# Por defecto, correr pytest cuando se ejecute el contenedor en modo dev
-ENTRYPOINT ["uv", "run", "pytest"]
-CMD ["tests/", "-v", "--tb=short"]
+# Copiar código de la aplicación
+COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser alembic/ ./alembic/
+COPY --chown=appuser:appuser main.py config.py alembic.ini ./
 
-# ============ PROD STAGE (sin dependencias de desarrollo) ============
-FROM base AS prod
-
-COPY pyproject.toml ./
-COPY uv.lock* ./
-
-# Instalar SOLO dependencias de producción
-RUN if [ -f uv.lock ]; then \
-        uv sync --frozen --no-dev; \
-    else \
-        uv sync --no-dev; \
-    fi
-
-COPY . .
+USER appuser
 
 EXPOSE 8000
 
-CMD ["uv", "run", "granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "8000", "main:app"]
+# HEALTHCHECK mejorado
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import socket; socket.create_connection(('localhost', 8000), timeout=5); exit(0)" || exit 1
 
-# Usar prod por defecto
-FROM prod
+# CMD optimizado - usar granian directamente
+CMD ["granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "8000", "main:app"] 
