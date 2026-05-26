@@ -5,16 +5,26 @@ services:
     image: redis:7-bookworm
     container_name: redis
     restart: always
+    
+    # Volumen para persistencia de datos
     volumes:
       - ./data:/data
+    
+    # Comando: redis con contraseña requerida
     command: redis-server --loglevel notice --requirepass ${REDIS_PASSWORD:-Qvv3r7y}
+    
+    # Red compartida con otros servicios
     networks:
       - notebookum-network
+    
+    # Verificar que Redis está respondiendo
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    
+    # Labels para Traefik (TCP routing)
     labels:
       - "traefik.enable=true"
       - "traefik.tcp.routers.redis.rule=HostSNI(`*`)"

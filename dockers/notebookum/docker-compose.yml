@@ -4,26 +4,45 @@ version: '3.8'
 services:
   notebookum:
     container_name: notebookum
+    
+    # Imagen versionada (no build inline para permitir CI/CD)
     image: notebookum:1.0.1
+    
+    # Mapeo de puertos (host:contenedor)
     ports:
       - "8000:8000"
+    
+    # Configuración de la aplicación
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-default}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      # Conexión a PostgreSQL (postgresql-servidor resuelve DNS automáticamente)
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://defaultuser:defaultpassword@postgresql-servidor:5432/defaultdb}
-      # Celery Configuration (for async tasks)
+      # Redis para Celery (async tasks)
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
+    
+    # Red personalizada (permite DNS entre servicios)
     networks:
       - notebookum-network
+    
+    # Reiniciar si falla (a menos que se detenga manualmente)
     restart: unless-stopped
+    
+    # Configuración de Traefik (reverse proxy)
     labels:
       - "traefik.enable=true"
+      # Host que activa este servicio
       - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.local`)"
+      # Protocolos (HTTP se redirige a HTTPS)
       - "traefik.http.routers.notebookum.entryPoints=http,https"
+      # Servicio a enrutar
       - "traefik.http.routers.notebookum.service=notebookum"
+      # Puerto interno del contenedor
       - "traefik.http.services.notebookum.loadbalancer.server.port=8000"
 
 networks:
+  # Red externa creada manualmente con: docker network create notebookum-network
+  # Permite que servicios de diferentes docker-compose se vean entre sí
   notebookum-network:
     external: true
