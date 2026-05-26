@@ -1,10 +1,9 @@
 
+version: '3.8'
+
 services:
   notebookum:
     container_name: notebookum
-    build:
-      context: ../../
-      dockerfile: Dockerfile
     image: notebookum:1.0.1
     ports:
       - "8000:8000"
@@ -17,16 +16,13 @@ services:
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
     networks:
       - notebookum-network
+    restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.localhost`)"
-      - "traefik.http.routers.notebookum.entryPoints=https"
+      - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.local`)"
+      - "traefik.http.routers.notebookum.entryPoints=http,https"
       - "traefik.http.routers.notebookum.service=notebookum"
-      - "traefik.http.routers.notebookum.entrypoints=http,https"
       - "traefik.http.services.notebookum.loadbalancer.server.port=8000"
-    volumes:
-            - ../../app:/app/app:ro
-            - ../../main.py:/app/main.py:ro
 
 networks:
   notebookum-network:
