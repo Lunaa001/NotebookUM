@@ -9,13 +9,20 @@ ENV PYTHONUNBUFFERED=1 \
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /build
 
+# Instalar dependencias del SO: Tesseract OCR (CPU-only, ligero)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    libtesseract-dev \
+    imagemagick \
+    && rm -rf /var/lib/apt/lists/*
+
 # Instalar uv (gestor de paquetes rápido)
 RUN pip install --no-cache-dir uv
 
 # Copiar especificaciones (permite reutilizar layers)
 COPY pyproject.toml uv.lock* ./
 
-# Crear virtual environment e instalar dependencias
+# Crear venv e instalar dependencias (sin torch/docling)
 RUN uv venv /opt/venv && \
     uv pip install --no-cache-dir . granian
 
@@ -28,6 +35,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /app
+
+# Instalar Tesseract en runtime (necesario para pytesseract)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    imagemagick \
+    && rm -rf /var/lib/apt/lists/*
 
 # Crear usuario no-root por seguridad
 RUN groupadd -r appuser && useradd -r -g appuser appuser
