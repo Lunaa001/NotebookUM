@@ -14,7 +14,6 @@ services:
         ports:
             - 80:80
             - 443:443
-            - 5432:5432      # PostgreSQL (TCP)
             - 8080:8080      # Traefik Dashboard
         
         # Volúmenes para configuración y certificados
