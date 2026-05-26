@@ -51,8 +51,9 @@ class TestSummaryService:
         with pytest.raises(ValueError, match="cannot be empty"):
             service.generate_summary("")
     
+    @patch('app.services.ai_service.AIService._check_api_health', return_value=True)
     @patch('app.services.ai_service.requests.post')
-    def test_generate_summary_with_mocked_ai(self, mock_post):
+    def test_generate_summary_with_mocked_ai(self, mock_post, mock_health):
         """Test generate_summary with mocked AI API"""
         # Mock the API response
         mock_response = MagicMock()

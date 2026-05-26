@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.135.3",
-    "uvicorn>=0.35.0",
     "granian>=2.7.3",
     "openai>=2.31.0",
     "pydantic-settings>=2.13.0",
@@ -21,7 +20,6 @@ dependencies = [
     "pdf2image>=1.17.0",
     "pillow>=10.0.0",
     "pillow-heif>=0.16.0",
-    "pybreaker>=1.4.0",
     "redis>=5.0.0",
     "hiredis>=3.0.0",
     "pytest>=9.0.3",

@@ -93,7 +93,12 @@ class TestPDFExtractionWithTesseract:
         
         Expected: Returns num_pages, title, format
         """
-        with patch('app.services.pdf_extraction_service.pdfplumber.open') as mock_open:
+        with patch('app.services.pdf_extraction_service.pdfplumber.open') as mock_open, \
+             patch('app.services.pdf_extraction_service.Path') as mock_path:
+            
+            # Mock Path.exists()
+            mock_path.return_value.exists.return_value = True
+            
             # Mock pdfplumber PDF
             mock_pdf = MagicMock()
             mock_pdf.pages = [MagicMock(), MagicMock(), MagicMock()]  # 3 pages

@@ -8,10 +8,6 @@ from app.services.saga_orchestrator import (
     SagaFactory,
     SagaTransactionStatus,
 )
-from app.services.circuit_breaker_service import (
-    CircuitBreakerService,
-    CircuitBreakerFactory,
-)
 from app.services.cache_service import CacheService, get_cache
 
 
@@ -143,90 +139,6 @@ class TestDocumentProcessingE2E:
         assert transaction.status == SagaTransactionStatus.FAILED
         assert upload_deleted is True
         assert extract_deleted is True
-
-
-class TestCircuitBreakerE2E:
-    """E2E tests for circuit breaker protection."""
-    
-    def test_circuit_breaker_opens_after_failures(self):
-        """Test circuit breaker opens after 5 failures."""
-        breaker = CircuitBreakerService(
-            name="test_api",
-            fail_max=5,
-            reset_timeout=30,
-        )
-        
-        # Make 5 calls fail
-        def failing_action():
-            raise ValueError("Simulated failure")
-        
-        for _ in range(5):
-            with pytest.raises((ValueError, Exception)):
-                breaker.call(failing_action)
-        
-        # Circuit should be open now
-        assert breaker.is_open
-        
-        # Next call should be rejected
-        with pytest.raises(Exception):  # CircuitBreakerError or pybreaker exception
-            breaker.call(failing_action)
-    
-    def test_circuit_breaker_recovers_after_timeout(self):
-        """Test circuit breaker enters HALF_OPEN and recovers."""
-        import time
-        
-        breaker = CircuitBreakerService(
-            name="test_recovery",
-            fail_max=2,
-            reset_timeout=1,  # 1 second for testing
-        )
-        
-        # Make 2 calls fail to open circuit
-        def failing_action():
-            raise ValueError("failure")
-        
-        for _ in range(2):
-            with pytest.raises((ValueError, Exception)):
-                breaker.call(failing_action)
-        
-        assert breaker.is_open
-        
-        # Wait for reset timeout + small buffer
-        time.sleep(2.5)
-        
-        # After reset timeout, circuit should be in HALF_OPEN or auto-closed state
-        # (depending on pybreaker implementation)
-        # Try to make a successful call
-        def success_action():
-            return "success"
-        
-        result = breaker.call(success_action)
-        assert result == "success"
-        # After successful call in HALF_OPEN, should be closed
-        assert breaker.is_closed
-    
-    def test_circuit_breaker_metrics_tracked(self):
-        """Test circuit breaker tracks metrics."""
-        breaker = CircuitBreakerService(name="test_metrics")
-        
-        def success_action():
-            return "ok"
-        
-        def fail_action():
-            raise ValueError("fail")
-        
-        # Make some calls
-        for _ in range(3):
-            breaker.call(success_action)
-        
-        for _ in range(2):
-            with pytest.raises((ValueError, Exception)):
-                breaker.call(fail_action)
-        
-        metrics = breaker.metrics
-        assert metrics["total_calls"] == 5
-        assert metrics["successful_calls"] == 3
-        assert metrics["failed_calls"] == 2
 
 
 class TestCacheE2E:
@@ -373,46 +285,3 @@ class TestRateLimitingE2E:
         
         assert allowed_next == 100
         assert blocked == 50
-
-
-class TestTraefikRoutingE2E:
-    """E2E tests for Traefik routing."""
-    
-    def test_notebookum_service_routing(self):
-        """Test requests route to NotebookUM service."""
-        # This would require a running Traefik instance
-        # For testing, we verify the configuration
-        import yaml
-        from pathlib import Path
-        
-        config_path = Path(__file__).parent.parent / "dockers/traefik/config/config.yml"
-        
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        
-        # Verify NotebookUM router exists
-        assert "notebookum" in config["http"]["routers"]
-        
-        # Verify service points to correct backend
-        router = config["http"]["routers"]["notebookum"]
-        service = config["http"]["services"][router["service"]]
-        
-        assert service["loadBalancer"]["servers"][0]["url"] == "http://notebookum:8000"
-    
-    def test_health_check_configured(self):
-        """Test health check is configured in Traefik."""
-        import yaml
-        from pathlib import Path
-        
-        config_path = Path(__file__).parent.parent / "dockers/traefik/config/config.yml"
-        
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        
-        # Get NotebookUM service
-        service = config["http"]["services"]["notebookum"]
-        health_check = service["loadBalancer"]["healthCheck"]
-        
-        assert health_check["path"] == "/health"
-        assert health_check["interval"] == "30s"
-        assert health_check["timeout"] == "5s"

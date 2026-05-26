@@ -129,7 +129,15 @@ class PDFExtractionService:
         
         Returns:
             Dict with num_pages, title (filename), and format
+            
+        Raises:
+            ValueError: If file does not exist or cannot be processed
         """
+        path = Path(file_path)
+        
+        if not path.exists():
+            raise ValueError(f"File not found: {file_path}")
+        
         try:
             with pdfplumber.open(file_path) as pdf:
                 page_count = len(pdf.pages)
@@ -140,14 +148,10 @@ class PDFExtractionService:
                 "title": title,
                 "format": "PDF"
             }
+        except pdfplumber.PDFException as e:
+            raise ValueError(f"Invalid PDF file: {str(e)}")
         except Exception as e:
-            logger.error(f"Error extracting PDF metadata: {str(e)}")
-            return {
-                "num_pages": 0,
-                "title": "Unknown",
-                "format": "PDF",
-                "error": str(e)
-            }
+            raise ValueError(f"Error extracting PDF metadata: {str(e)}")
     
     @staticmethod
     def validate_pdf(file_content: bytes) -> bool:

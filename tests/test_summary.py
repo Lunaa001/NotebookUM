@@ -60,8 +60,9 @@ class TestSummaryServiceFASE5(unittest.TestCase):
         result = service.should_generate_summary(None)
         self.assertFalse(result)
     
+    @patch('app.services.ai_service.AIService._check_api_health', return_value=True)
     @patch('app.services.ai_service.requests.post')
-    def test_generate_summary_with_mocked_api(self, mock_post):
+    def test_generate_summary_with_mocked_api(self, mock_post, mock_health):
         """Test generate_summary calls AI service correctly"""
         # Mock API response
         mock_response = MagicMock()

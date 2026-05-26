@@ -52,9 +52,11 @@ class TestAIService:
             }]
         }
         
-        with patch('requests.post', return_value=mock_response):
-            result = ai_service.generate_summary("Texto de prueba para resumir")
-            assert result == "Este es un resumen de prueba."
+        # Mock both health check (GET) and API call (POST)
+        with patch('app.services.ai_service.AIService._check_api_health', return_value=True):
+            with patch('requests.post', return_value=mock_response):
+                result = ai_service.generate_summary("Texto de prueba para resumir")
+                assert result == "Este es un resumen de prueba."
     
     def test_generate_summary_api_error(self, ai_service):
         """Test generate_summary handles API errors"""
@@ -62,30 +64,37 @@ class TestAIService:
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
         
-        with patch('requests.post', return_value=mock_response):
-            with pytest.raises(ValueError, match="API error"):
-                ai_service.generate_summary("Test text")
+        # Mock health check to pass, then POST fails
+        with patch('app.services.ai_service.AIService._check_api_health', return_value=True):
+            with patch('requests.post', return_value=mock_response):
+                with pytest.raises(ValueError, match="API error"):
+                    ai_service.generate_summary("Test text")
     
     def test_generate_summary_network_error(self, ai_service):
         """Test generate_summary handles network errors"""
-        with patch('requests.post', side_effect=Exception("Connection failed")):
-            with pytest.raises(ValueError, match="Error generating summary"):
-                ai_service.generate_summary("Test text")
+        # Mock health check to pass, then POST raises exception
+        with patch('app.services.ai_service.AIService._check_api_health', return_value=True):
+            with patch('requests.post', side_effect=Exception("Connection failed")):
+                with pytest.raises(ValueError, match="Error generating summary"):
+                    ai_service.generate_summary("Test text")
     
     def test_test_connection_success(self, ai_service):
         """Test connection check with successful API response"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         
-        with patch('requests.post', return_value=mock_response):
+        # Mock the health check GET request
+        with patch('requests.get', return_value=mock_response):
             result = ai_service.test_connection()
             assert result is True
     
     def test_test_connection_failure(self, ai_service):
         """Test connection check with API failure"""
-        with patch('requests.post', side_effect=Exception("Connection error")):
-            with pytest.raises(ValueError, match="API connection failed"):
-                ai_service.test_connection()
+        # Mock health check to fail (API not reachable)
+        with patch('requests.get', side_effect=Exception("Connection error")):
+            result = ai_service.test_connection()
+            # test_connection returns False on network error (from _check_api_health)
+            assert result is False
 
 
 # Integration test - only runs if API key is available

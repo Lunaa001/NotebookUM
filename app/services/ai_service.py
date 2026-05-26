@@ -4,39 +4,57 @@ import requests
 from typing import Optional
 import os
 import logging
-from app.services.circuit_breaker_service import CircuitBreakerFactory
 
 logger = logging.getLogger(__name__)
 
 
 class AIService:
-    """Service for calling UM Gemma4 API for summarization"""
+    """Service for calling UM Gemma4 API for summarization (CPU-optimized, no circuit breaker)"""
     
     # UM AI Cloud configuration
     API_BASE_URL = "https://ai.cloud.um.edu.ar/api/v1"
     MODEL = "gemma4-26b-16g"
-    CIRCUIT_BREAKER_NAME = "gemma4_api"
+    HEALTH_CHECK_TIMEOUT = 5  # seconds - quick ping to verify connectivity
+    API_TIMEOUT = 30  # seconds - full request timeout
     
     def __init__(self, api_key: Optional[str] = None):
         """
-        Initialize AI Service with API key and Circuit Breaker
+        Initialize AI Service with API key.
+        
+        Health checks are performed per-request instead of using circuit breaker pattern.
+        This is simpler, no external dependencies needed.
         
         Args:
             api_key: UM AI API key (or from env variable GEMMA4_API_KEY)
         """
         self.api_key = api_key or os.getenv("GEMMA4_API_KEY")
-        # Initialize circuit breaker for API calls
-        # fail_max=5: Open after 5 failures
-        # reset_timeout=30: Wait 30s before attempting recovery
-        self.circuit_breaker = CircuitBreakerFactory.get_or_create(
-            name=self.CIRCUIT_BREAKER_NAME,
-            fail_max=5,
-            reset_timeout=30,
-        )
+    
+    def _check_api_health(self) -> bool:
+        """
+        Check if API is reachable with a quick ping.
+        
+        Returns:
+            True if API responds, False if unreachable (no error thrown)
+        """
+        try:
+            response = requests.get(
+                f"{self.API_BASE_URL}/health",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=self.HEALTH_CHECK_TIMEOUT
+            )
+            return response.status_code in [200, 204]
+        except (requests.Timeout, requests.ConnectionError):
+            logger.warning(f"API health check timeout or connection error")
+            return False
+        except Exception as e:
+            logger.warning(f"API health check failed: {str(e)}")
+            return False
     
     def generate_summary(self, text: str, max_tokens: int = 200) -> str:
         """
-        Generate a summary of the provided text using Gemma4 with Circuit Breaker protection
+        Generate a summary of the provided text using Gemma4.
+        
+        Health check performed before making request. If API not reachable, raises ValueError.
         
         Args:
             text: Text to summarize
@@ -46,7 +64,7 @@ class AIService:
             Generated summary
         
         Raises:
-            ValueError: If API call fails, circuit is open, or no API key available
+            ValueError: If API not reachable, no API key, or call fails
         """
         if not self.api_key:
             raise ValueError("GEMMA4_API_KEY not provided or found in environment")
@@ -54,16 +72,16 @@ class AIService:
         if not text or text.strip() == "":
             raise ValueError("Text to summarize cannot be empty")
         
-        # Execute with circuit breaker protection
-        try:
-            return self.circuit_breaker.call(self._call_api, text, max_tokens)
-        except Exception as e:
-            logger.error(f"Failed to generate summary: {str(e)}")
-            raise
+        # Quick health check - if API not responding, fail immediately instead of hanging
+        if not self._check_api_health():
+            raise ValueError("Gemma4 API not reachable - check connectivity or try again later")
+        
+        # API is healthy, make the summarization request
+        return self._call_api(text, max_tokens)
     
     def _call_api(self, text: str, max_tokens: int) -> str:
         """
-        Internal method to call Gemma4 API (wrapped by circuit breaker)
+        Internal method to call Gemma4 API.
         
         Args:
             text: Text to summarize
@@ -99,7 +117,7 @@ RESUMEN:"""
                     "temperature": 0.7,
                     "max_tokens": max_tokens
                 },
-                timeout=30
+                timeout=self.API_TIMEOUT
             )
             
             if response.status_code != 200:
@@ -123,6 +141,8 @@ RESUMEN:"""
             else:
                 raise ValueError("Unexpected API response format")
         
+        except requests.exceptions.Timeout:
+            raise ValueError(f"Gemma4 API timeout (>{self.API_TIMEOUT}s) - request too slow")
         except requests.exceptions.RequestException as e:
             raise ValueError(f"Failed to call AI API: {str(e)}")
         except Exception as e:
@@ -130,48 +150,12 @@ RESUMEN:"""
     
     def test_connection(self) -> bool:
         """
-        Test if API connection works with Circuit Breaker protection
+        Test if API connection works by sending a health check.
         
         Returns:
-            True if connection successful
-        
-        Raises:
-            ValueError: If connection fails or no API key available
+            True if connection successful, False if not reachable
         """
         if not self.api_key:
             raise ValueError("GEMMA4_API_KEY not provided or found in environment")
         
-        # Execute with circuit breaker protection
-        return self.circuit_breaker.call(self._test_connection_api)
-    
-    def _test_connection_api(self) -> bool:
-        """
-        Internal method to test API connection (wrapped by circuit breaker)
-        
-        Returns:
-            True if connection successful
-            
-        Raises:
-            ValueError: If connection fails
-        """
-        try:
-            response = requests.post(
-                f"{self.API_BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": self.MODEL,
-                    "messages": [
-                        {"role": "user", "content": "Hola"}
-                    ],
-                    "max_tokens": 10
-                },
-                timeout=10
-            )
-            
-            return response.status_code == 200
-        
-        except Exception as e:
-            raise ValueError(f"API connection failed: {str(e)}")
+        return self._check_api_health()
