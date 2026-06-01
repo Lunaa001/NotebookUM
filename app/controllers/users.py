@@ -16,17 +16,24 @@ class UserResponse(BaseModel):
     message: Optional[str] = None
 
 
+def _serialize_user(user: Any) -> dict:
+    """Serialize Usuario model to JSON-friendly dict."""
+    fecha_registro = getattr(user, "fecha_registro", None)
+    return {
+        "id": getattr(user, "id", None),
+        "nombre": getattr(user, "nombre", None),
+        "email": getattr(user, "email", None),
+        "fecha_registro": fecha_registro.isoformat() if fecha_registro else None,
+    }
+
+
 @users_router.post("", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
 async def create_user(data: dict, session: Session = Depends(get_session)):
     """Create a new user"""
     try:
         user_service = UserService(session)
         user = user_service.create(data)
-        try:
-            user_dict = user.to_dict() if hasattr(user, 'to_dict') else user
-        except AttributeError:
-            user_dict = user
-        return UserResponse(success=True, data=user_dict)
+        return UserResponse(success=True, data=_serialize_user(user))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     finally:
@@ -44,9 +51,4 @@ async def get_user(user_id: int, session: Session = Depends(get_session)):
     finally:
         session.close()
 
-    try:
-        payload = user.to_dict() if hasattr(user, 'to_dict') else user
-    except AttributeError:
-        payload = user
-
-    return UserResponse(success=True, data=payload)
+    return UserResponse(success=True, data=_serialize_user(user))
