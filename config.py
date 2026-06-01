@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = Field(default=10 * 1024 * 1024)
     OPENAI_API_KEY: str = Field(default="sk-default")
     OPENAI_MODEL: str = Field(default="gpt-4")
-    GEMMA4_API_KEY: str = Field(default="sk-default")
     
     @field_validator("DEBUG", mode="before")
     @classmethod

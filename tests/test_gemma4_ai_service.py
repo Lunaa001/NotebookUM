@@ -1,4 +1,4 @@
-"""Tests for AIService with UM Gemma4 API"""
+"""Tests for AIService with UM OpenAI-compatible API"""
 
 import pytest
 from unittest.mock import patch, MagicMock
@@ -6,7 +6,7 @@ from app.services.ai_service import AIService
 
 
 class TestAIService:
-    """AIService tests for Gemma4 summarization"""
+    """AIService tests for OpenAI-compatible API summarization"""
     
     @pytest.fixture
     def ai_service(self):
@@ -17,22 +17,22 @@ class TestAIService:
         """Test AIService initializes with API key"""
         service = AIService(api_key="test-key-123")
         assert service.api_key == "test-key-123"
-        assert service.MODEL == "gemma4-26b-16g"
+        assert service.MODEL == "gemma4-26b"
         assert service.API_BASE_URL == "https://ai.cloud.um.edu.ar/api/v1"
     
     def test_ai_service_initialization_missing_key(self):
         """Test AIService initializes without key (error on API call)"""
-        # Mock os.getenv in ai_service module to ensure GEMMA4_API_KEY is not found
+        # Mock os.getenv in ai_service module to ensure OPENAI_API_KEY is not found
         with patch('app.services.ai_service.os.getenv', return_value=None):
             service = AIService(api_key=None)  # Won't error until API call
             assert service.api_key is None
     
     def test_generate_summary_no_key_raises_error(self):
         """Test that generate_summary raises error when no API key"""
-        # Mock os.getenv in ai_service module to ensure GEMMA4_API_KEY is not found
+        # Mock os.getenv in ai_service module to ensure OPENAI_API_KEY is not found
         with patch('app.services.ai_service.os.getenv', return_value=None):
             service = AIService(api_key=None)
-            with pytest.raises(ValueError, match="GEMMA4_API_KEY"):
+            with pytest.raises(ValueError, match="OPENAI_API_KEY"):
                 service.generate_summary("Test text")
     
     def test_generate_summary_empty_text_raises_error(self, ai_service):
@@ -99,16 +99,16 @@ class TestAIService:
 
 # Integration test - only runs if API key is available
 class TestAIServiceIntegration:
-    """Integration tests against real UM Gemma4 API"""
+    """Integration tests against real UM OpenAI-compatible API"""
     
     @pytest.mark.skip(reason="Integration test - requires live API")
     def test_real_api_connection(self):
-        """Test real connection to UM Gemma4 API"""
+        """Test real connection to OpenAI API"""
         import os
-        api_key = os.getenv("GEMMA4_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         
         if not api_key:
-            pytest.skip("GEMMA4_API_KEY not set")
+            pytest.skip("OPENAI_API_KEY not set")
         
         service = AIService(api_key=api_key)
         
@@ -117,12 +117,12 @@ class TestAIServiceIntegration:
     
     @pytest.mark.skip(reason="Integration test - requires live API")
     def test_real_summarization(self):
-        """Test real summarization with UM Gemma4 API"""
+        """Test real summarization with OpenAI API"""
         import os
-        api_key = os.getenv("GEMMA4_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         
         if not api_key:
-            pytest.skip("GEMMA4_API_KEY not set")
+            pytest.skip("OPENAI_API_KEY not set")
         
         service = AIService(api_key=api_key)
         

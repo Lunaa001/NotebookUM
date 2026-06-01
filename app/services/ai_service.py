@@ -1,4 +1,4 @@
-"""Service for AI-powered text summarization using UM Gemma4 API"""
+"""Service for AI-powered text summarization using OpenAI-compatible API from UM AI Cloud"""
 
 import requests
 from typing import Optional
@@ -9,25 +9,28 @@ logger = logging.getLogger(__name__)
 
 
 class AIService:
-    """Service for calling UM Gemma4 API for summarization (CPU-optimized, no circuit breaker)"""
+    """Service for calling OpenAI-compatible API from UM AI Cloud (https://ai.cloud.um.edu.ar)
     
-    # UM AI Cloud configuration
+    Get your API key from: OpenWebUI Perfil -> Ajustes -> Cuenta -> Claves API
+    """
+    
+    # UM AI Cloud OpenAI-compatible API configuration
     API_BASE_URL = "https://ai.cloud.um.edu.ar/api/v1"
-    MODEL = "gemma4-26b-16g"
+    MODEL = "gemma4-26b"  # Default model, can be overridden
     HEALTH_CHECK_TIMEOUT = 5  # seconds - quick ping to verify connectivity
     API_TIMEOUT = 30  # seconds - full request timeout
     
     def __init__(self, api_key: Optional[str] = None):
         """
-        Initialize AI Service with API key.
+        Initialize AI Service with OpenAI-compatible API.
         
         Health checks are performed per-request instead of using circuit breaker pattern.
         This is simpler, no external dependencies needed.
         
         Args:
-            api_key: UM AI API key (or from env variable GEMMA4_API_KEY)
+            api_key: OpenAI-compatible API key from UM AI Cloud (or from env variable OPENAI_API_KEY)
         """
-        self.api_key = api_key or os.getenv("GEMMA4_API_KEY")
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
     
     def _check_api_health(self) -> bool:
         """
@@ -52,7 +55,7 @@ class AIService:
     
     def generate_summary(self, text: str, max_tokens: int = 200) -> str:
         """
-        Generate a summary of the provided text using Gemma4.
+        Generate a summary of the provided text using OpenAI-compatible API.
         
         Health check performed before making request. If API not reachable, raises ValueError.
         
@@ -67,21 +70,21 @@ class AIService:
             ValueError: If API not reachable, no API key, or call fails
         """
         if not self.api_key:
-            raise ValueError("GEMMA4_API_KEY not provided or found in environment")
+            raise ValueError("OPENAI_API_KEY not provided or found in environment")
         
         if not text or text.strip() == "":
             raise ValueError("Text to summarize cannot be empty")
         
         # Quick health check - if API not responding, fail immediately instead of hanging
         if not self._check_api_health():
-            raise ValueError("Gemma4 API not reachable - check connectivity or try again later")
+            raise ValueError("UM AI Cloud API not reachable - check connectivity or try again later")
         
         # API is healthy, make the summarization request
         return self._call_api(text, max_tokens)
     
     def _call_api(self, text: str, max_tokens: int) -> str:
         """
-        Internal method to call Gemma4 API.
+        Internal method to call OpenAI-compatible API from UM AI Cloud.
         
         Args:
             text: Text to summarize
@@ -142,7 +145,7 @@ RESUMEN:"""
                 raise ValueError("Unexpected API response format")
         
         except requests.exceptions.Timeout:
-            raise ValueError(f"Gemma4 API timeout (>{self.API_TIMEOUT}s) - request too slow")
+            raise ValueError(f"UM AI Cloud API timeout (>{self.API_TIMEOUT}s) - request too slow")
         except requests.exceptions.RequestException as e:
             raise ValueError(f"Failed to call AI API: {str(e)}")
         except Exception as e:
@@ -156,6 +159,6 @@ RESUMEN:"""
             True if connection successful, False if not reachable
         """
         if not self.api_key:
-            raise ValueError("GEMMA4_API_KEY not provided or found in environment")
+            raise ValueError("OPENAI_API_KEY not provided or found in environment")
         
         return self._check_api_health()

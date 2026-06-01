@@ -22,7 +22,7 @@ class SummaryService:
     
     def generate_summary(self, document_text: str, max_tokens: int = 300) -> str:
         """
-        Generate a concise summary of document text using Gemma4 API
+        Generate a concise summary of document text using OpenAI-compatible API
         
         Args:
             document_text: Full text extracted from document

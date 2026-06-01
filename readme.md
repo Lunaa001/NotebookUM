@@ -2,7 +2,7 @@
 
 **Status:** ✅ **FASE 1-5 COMPLETAS** | Production Ready
 
-NotebookUM es una API FastAPI para procesar documentos PDF, extraer texto y generar resúmenes automáticos usando IA (Gemma4 de UM).
+NotebookUM es una API FastAPI para procesar documentos PDF, extraer texto y generar resúmenes automáticos usando IA (OpenAI-compatible API de UM).
 
 ---
 
@@ -14,7 +14,7 @@ NotebookUM es una API FastAPI para procesar documentos PDF, extraer texto y gene
 | **2** | PostgreSQL + SQLAlchemy + Alembic | ✅ |
 | **3** | Repository Pattern + CRUD | ✅ |
 | **4** | PDF Extraction (Docling) + Storage Service | ✅ |
-| **5** | AI Summarization (Gemma4) + Summary Endpoint | ✅ |
+| **5** | AI Summarization (OpenAI-compatible) + Summary Endpoint | ✅ |
 
 ### Flujo Completo:
 ```
@@ -22,7 +22,7 @@ PDF Upload → Docling Extract (OCR, Tables, Layout)
     ↓
 Texto Extraído → Almacenado en BD
     ↓
-Solicitar Resumen → Gemma4 API (26B LLM)
+Solicitar Resumen → OpenAI-compatible API (UM AI Cloud)
     ↓
 Resumen Generado → Almacenado en BD
 ```
@@ -34,7 +34,7 @@ Resumen Generado → Almacenado en BD
 - **Backend:** FastAPI 0.135.3
 - **Database:** PostgreSQL 15 + SQLAlchemy 2.0 + Alembic
 - **PDF Processing:** Docling 2.91.0 (OCR, Tables, Layouts)
-- **AI/Summarization:** Gemma4-26b-16g (UM Faculty API)
+- **AI/Summarization:** OpenAI-compatible API (UM AI Cloud)
 - **Package Manager:** uv
 - **Testing:** pytest 9.0.3
 - **Containerization:** Docker + Docker Compose
@@ -48,7 +48,7 @@ Resumen Generado → Almacenado en BD
 - Python 3.14+
 - PostgreSQL 15+
 - `uv` package manager
-- API Key de Gemma4 (UM Faculty)
+- API Key de OpenAI-compatible (UM AI Cloud)
 
 ### 1. Clonar repositorio
 ```bash
@@ -66,7 +66,7 @@ uv sync
 cp .env.example .env
 # Editar .env con:
 # - DATABASE_URL=postgresql+psycopg://notebookum:notebookum123@localhost:5432/notebookum
-# - GEMMA4_API_KEY=sk-8d8bd2869b3d4c19b734a6f5c82482aa
+# - OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
 
 ### 4. Iniciar PostgreSQL (Docker)
@@ -176,7 +176,7 @@ docker build -t notebookum:1.2.0 .
 # Ejecutar
 docker run -p 8000:8000 \
   -e DATABASE_URL="postgresql+psycopg://user:pass@db:5432/notebookum" \
-  -e GEMMA4_API_KEY="sk-..." \
+  -e OPENAI_API_KEY="sk-..." \
   notebookum:1.2.0
 ```
 
@@ -210,7 +210,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://notebookum:notebookum123@postgres:5432/notebookum
-      GEMMA4_API_KEY: ${GEMMA4_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       DEBUG: "false"
     depends_on:
       postgres:
@@ -225,7 +225,7 @@ volumes:
 
 **Ejecutar:**
 ```bash
-GEMMA4_API_KEY="sk-..." docker-compose up -d
+OPENAI_API_KEY="sk-..." docker-compose up -d
 ```
 
 **Logs:**
@@ -245,7 +245,7 @@ NotebookUM/
 │   │   ├── ai_controller.py  # AI endpoints
 │   │   └── ...
 │   ├── services/             # Business logic
-│   │   ├── ai_service.py          # Gemma4 API integration
+│   │   ├── ai_service.py          # OpenAI-compatible API integration
 │   │   ├── summary_service.py     # FASE 5: Summarization
 │   │   ├── pdf_extraction_service.py # Docling integration
 │   │   ├── document_service.py
@@ -293,8 +293,8 @@ uv run pytest tests/test_pdf_extraction_service.py -v
 uv run pytest tests/test_summary_service_fase5.py -v
 uv run pytest tests/test_summary.py -v
 
-# AI Service (Gemma4)
-uv run pytest tests/test_gemma4_ai_service.py -v
+# AI Service (OpenAI-compatible API)
+
 ```
 
 ### Coverage
@@ -313,8 +313,8 @@ open htmlcov/index.html
 # Database
 DATABASE_URL=postgresql+psycopg://notebookum:notebookum123@localhost:5432/notebookum
 
-# AI API (Gemma4 UM Faculty)
-GEMMA4_API_KEY=sk-8d8bd2869b3d4c19b734a6f5c82482aa
+# AI API (OpenAI)
+OPENAI_API_KEY=sk-your-openai-api-key-here
 
 # App Config
 DEBUG=true
@@ -326,7 +326,7 @@ MAX_UPLOAD_SIZE=10485760  # 10MB en bytes
 ### Variables disponibles en `config.py`:
 - `SECRET_KEY` - Para JWT (futuro)
 - `DATABASE_URL` - PostgreSQL connection
-- `GEMMA4_API_KEY` - UM Faculty AI API
+- `OPENAI_API_KEY` - OpenAI API key
 - `DEBUG` - Debug mode
 - `MAX_UPLOAD_SIZE` - Max file upload size
 - `ALLOWED_ORIGINS` - CORS origins
@@ -347,9 +347,9 @@ sleep 10
 uv run alembic upgrade head
 ```
 
-### Error: "GEMMA4_API_KEY extra inputs not permitted"
+### Error: "OPENAI_API_KEY extra inputs not permitted"
 
-**Causa:** `config.py` sin field `GEMMA4_API_KEY`
+**Causa:** `config.py` sin field `OPENAI_API_KEY`
 
 **Solución:** Ya está incluido en la actualización. Reiniciar servidor:
 ```bash
@@ -373,7 +373,7 @@ print(f'Extracted: {len(text)} chars')
 
 ### Resumen vacío en respuesta
 
-**Causa:** Gemma4 API respondiendo con `content: ""` y `reasoning: "..."`
+**Causa:** OpenAI-compatible API respondiendo con `content: ""` y `reasoning: ""`
 
 **Status:** ✅ Ya manejado en `AIService.generate_summary()` - usa `reasoning` como fallback
 
@@ -412,7 +412,7 @@ MIT License - 2026
 
 - **Método y Ejecución:** POST, con procesamiento asincrónico vía `BackgroundTasks` de FastAPI.
 - **Respuesta Inmediata:** Retornar **Status 202 Accepted** con el ID del documento tras validar el archivo.
-- **El flujo interno debe:** Extraer texto (Docling) -> Generar resumen (Nemotron) -> Guardar DB.
+- **El flujo interno debe:** Extraer texto (Docling) -> Generar resumen (OpenAI-compatible API) -> Guardar DB.
 - **Restricción:** Prohibido guardar el archivo físico en el servidor (procesar en memoria/stream).
 - **Validaciones:**
     - `contentType: application/pdf` (Error 400 si falla).
@@ -437,4 +437,4 @@ MIT License - 2026
 
 ## 6. Testing y Calidad (TDD)
 - Escribir pruebas unitarias y de integración utilizando `pytest`.
-- **Mocks:** Burlar (mockear) la capa de infraestructura (Docling y Nemotron) durante los tests para asegurar que las pruebas sean rápidas y no dependan de servicios externos.
+- **Mocks:** Burlar (mockear) la capa de infraestructura (Docling y OpenAI-compatible API) durante los tests para asegurar que las pruebas sean rápidas y no dependan de servicios externos.

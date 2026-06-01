@@ -16,18 +16,18 @@ class ChatResponse(BaseModel):
 
 @intelligence_router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Send a message to the Gemma model and return its response"""
+    """Send a message to the OpenAI-compatible API from UM AI Cloud"""
     user_message = request.message
     
-    # Configure OpenAI client with custom settings
+    # Configure OpenAI client with UM AI Cloud settings
     client = openai.OpenAI(
-        api_key=os.getenv("GEMMA_API_KEY"),
-        base_url=os.getenv("GEMMA_API_URL")
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_API_BASE_URL", "https://ai.cloud.um.edu.ar/api/v1")
     )
     
     # Call the API
     completion = client.chat.completions.create(
-        model="gemma3-4b",
+        model="gemma4-26b",
         messages=[
             {"role": "user", "content": user_message}
         ]

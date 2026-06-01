@@ -279,7 +279,7 @@ async def generate_document_summary(
             )
 
         # Generate summary using AIService and SummaryService
-        ai_service = AIService(api_key=os.getenv("GEMMA4_API_KEY"))
+        ai_service = AIService(api_key=os.getenv("OPENAI_API_KEY"))
         summary_service = SummaryService(ai_service=ai_service)
 
         # Check if summarization is feasible

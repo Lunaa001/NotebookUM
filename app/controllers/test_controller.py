@@ -35,11 +35,11 @@ async def test_summarize(request: SummarizeTestRequest):
     Returns:
         Summary and metadata
     """
-    api_key = os.getenv("GEMMA4_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="GEMMA4_API_KEY not configured"
+            detail="OPENAI_API_KEY not configured"
         )
     
     try:
@@ -71,11 +71,11 @@ async def test_ai_connection():
     
     **Development only** - Remove in production
     """
-    api_key = os.getenv("GEMMA4_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="GEMMA4_API_KEY not configured"
+            detail="OPENAI_API_KEY not configured"
         )
     
     try:
@@ -86,7 +86,7 @@ async def test_ai_connection():
             "status": "success" if result else "failed",
             "connected": result,
             "endpoint": "https://ai.cloud.um.edu.ar/api/v1/chat/completions",
-            "model": "gemma4-26b-16g"
+            "model": "gemma4-26b"
         }
     
     except Exception as e:

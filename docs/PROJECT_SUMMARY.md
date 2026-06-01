@@ -14,11 +14,11 @@ NotebookUM is a production-ready Document Processing API built with FastAPI, fea
 
 ### 2. **Document Processing Pipeline**
 ```
-Upload PDF → Docling Extraction → Gemma4 Summarization → Redis Cache
+Upload PDF → Docling Extraction → OpenAI-compatible API Summarization → Redis Cache
 ```
 - **Upload**: Store PDF file in volume, create DB record
 - **Extraction**: Docling 1.0.0+ extracts text with OCR support
-- **Summarization**: Gemma4-26b-16g API integration at https://ai.cloud.um.edu.ar
+- **Summarization**: OpenAI-compatible API integration at https://ai.cloud.um.edu.ar
 - **Caching**: Redis caches extracted text (7 days) + summaries (30 days)
 
 ### 3. **Resilience Patterns**
@@ -109,7 +109,7 @@ app/
 │   ├── circuit_breaker_service.py    # PyBreaker wrapper
 │   ├── saga_orchestrator.py          # Saga pattern implementation
 │   ├── cache_service.py              # Redis wrapper
-│   ├── ai_service.py                 # Gemma4 integration
+│   ├── ai_service.py                 # OpenAI-compatible API integration
 │   ├── document_service.py           # Document processing
 │   └── ...
 ├── models/
@@ -248,8 +248,8 @@ docker-compose logs -f
 ### Circuit Breaker Always Open
 ```bash
 # Check AI service status
-curl -i https://ai.cloud.um.edu.ar/api/v1/health
-# Check credentials: echo $GEMMA4_API_KEY
+curl -i https://api.openai.com/v1/models
+# Check credentials: echo $OPENAI_API_KEY
 # Review logs: docker logs notebookum
 ```
 

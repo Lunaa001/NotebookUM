@@ -93,7 +93,7 @@ class TestSummaryService:
             service.generate_summary(test_text)
 
 
-@pytest.mark.skip(reason="Requires running database and Gemma4 API")
+@pytest.mark.skip(reason="Requires running database and OpenAI-compatible API")
 class TestDocumentSummaryIntegration:
     """Integration tests for document summarization endpoint"""
     
@@ -101,7 +101,7 @@ class TestDocumentSummaryIntegration:
         """Test generating summary for uploaded document"""
         # This test requires:
         # 1. Running PostgreSQL
-        # 2. Running Gemma4 API with valid credentials
+        # 2. Running OpenAI-compatible API with valid credentials
         # 3. Pre-uploaded document
         pass
     
