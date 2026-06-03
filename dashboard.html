@@ -513,7 +513,7 @@
                             <span class="service-icon">⚙️</span>
                             <div>
                                 <div class="service-name">Controller</div>
-                                <div class="service-port">Go · :5000</div>
+                                <div class="service-port">Go · :5001</div>
                             </div>
                         </div>
                         <span class="status-badge status-checking" id="status-controller">Checking</span>
@@ -665,11 +665,11 @@
         // ═══════════════════════════════════════════════════════════════════════
         const CONFIG = {
             // Controller is the ONLY entry point
-            CONTROLLER_URL: 'http://localhost:5000',
+            CONTROLLER_URL: 'http://localhost:5001',
             
             // Direct service URLs for health checks only
             SERVICES: {
-                controller:  { url: 'http://localhost:5000',  health: '/health' },
+                controller:  { url: 'http://localhost:5001',  health: '/health' },
                 user:        { url: 'http://localhost:8001',  health: '/health' },
                 extract:     { url: 'http://localhost:8002',  health: '/health' },
                 summary:     { url: 'http://localhost:8003',  health: '/health' },
