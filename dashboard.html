@@ -448,6 +448,34 @@
             cursor: not-allowed;
         }
 
+        /* ─── FORMS ───────────────────────────────────────── */
+        .form-group { margin-bottom: 12px; }
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            transition: var(--transition);
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .auth-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .auth-panel { padding: 10px; }
+        .auth-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 12px; color: var(--accent-blue); }
+        .logged-in-panel { text-align: center; padding: 20px; display: none; }
+        .user-email-badge { display: inline-block; padding: 6px 12px; background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border-radius: 20px; font-weight: 600; font-size: 0.8rem; margin: 10px 0; }
+
         /* ─── RESPONSIVE ──────────────────────────────────── */
         @media (max-width: 1024px) {
             .main-grid { grid-template-columns: 1fr; }
@@ -573,6 +601,40 @@
 
             <!-- RIGHT: Upload + Pipeline + Logs -->
             <div class="right-panel">
+                <!-- Auth Section -->
+                <div class="card" id="auth-card">
+                    <div class="card-header">🔐 Autenticación</div>
+                    <div class="card-body">
+                        <!-- Logged Out View -->
+                        <div id="auth-forms" class="auth-container">
+                            <div class="auth-panel">
+                                <div class="auth-title">Iniciar Sesión</div>
+                                <input type="email" id="login-email" class="form-input" placeholder="Email">
+                                <input type="password" id="login-password" class="form-input" placeholder="Contraseña">
+                                <button class="btn btn-primary" onclick="handleLogin()" style="width: 100%;">Login</button>
+                            </div>
+                            <div class="auth-panel" style="border-left: 1px solid var(--border-glass);">
+                                <div class="auth-title">Registrarse</div>
+                                <input type="text" id="reg-firstname" class="form-input" placeholder="Nombre">
+                                <input type="text" id="reg-lastname" class="form-input" placeholder="Apellido">
+                                <input type="email" id="reg-email" class="form-input" placeholder="Email">
+                                <input type="password" id="reg-password" class="form-input" placeholder="Contraseña">
+                                <button class="btn btn-ghost" onclick="handleRegister()" style="width: 100%;">Registrar</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Logged In View -->
+                        <div id="logged-in-view" class="logged-in-panel">
+                            <div style="font-size: 2rem;">👋</div>
+                            <div style="margin-top: 10px; color: var(--text-secondary);">Sesión iniciada como</div>
+                            <div id="current-user-email" class="user-email-badge">usuario@test.com</div>
+                            <div>
+                                <button class="btn btn-ghost" onclick="handleLogout()">Cerrar Sesión</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Upload Zone -->
                 <div class="card">
                     <div class="card-header">📁 Cargar PDF</div>
@@ -804,6 +866,92 @@
             for (let i = 1; i <= 6; i++) {
                 setStep(i, 'pending', 'Esperando');
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // AUTHENTICATION STATE & LOGIC
+        // ═══════════════════════════════════════════════════════════════════════
+        let currentUserToken = null;
+
+        function updateAuthUI(userEmail) {
+            if (userEmail) {
+                document.getElementById('auth-forms').style.display = 'none';
+                document.getElementById('logged-in-view').style.display = 'block';
+                document.getElementById('current-user-email').textContent = userEmail;
+            } else {
+                document.getElementById('auth-forms').style.display = 'grid';
+                document.getElementById('logged-in-view').style.display = 'none';
+            }
+        }
+
+        async function handleRegister() {
+            const first_name = document.getElementById('reg-firstname').value;
+            const last_name = document.getElementById('reg-lastname').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            if (!first_name || !last_name || !email || !password) {
+                addLog('❌ Faltan datos para el registro', 'error');
+                return;
+            }
+
+            addLog(`🔄 Registrando usuario ${email}...`, 'info');
+            try {
+                const response = await fetch(`${CONFIG.SERVICES.user.url}/api/v1/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, first_name, last_name, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`✅ Registro exitoso para ${email}`, 'success');
+                    currentUserToken = data.access_token;
+                    updateAuthUI(data.user.email);
+                } else {
+                    const error = await response.json().catch(()=>({}));
+                    addLog(`❌ Error en registro: ${error.detail || response.statusText}`, 'error');
+                }
+            } catch (err) {
+                addLog(`❌ Error de red: ${err.message}`, 'error');
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                addLog('❌ Faltan credenciales', 'error');
+                return;
+            }
+
+            addLog(`🔄 Iniciando sesión para ${email}...`, 'info');
+            try {
+                const response = await fetch(`${CONFIG.SERVICES.user.url}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`✅ Login exitoso. ¡Hola ${data.user.firstName}!`, 'success');
+                    currentUserToken = data.access_token;
+                    updateAuthUI(data.user.email);
+                } else {
+                    const error = await response.json().catch(()=>({}));
+                    addLog(`❌ Error en login: ${error.detail || response.statusText}`, 'error');
+                }
+            } catch (err) {
+                addLog(`❌ Error de red: ${err.message}`, 'error');
+            }
+        }
+
+        function handleLogout() {
+            currentUserToken = null;
+            updateAuthUI(null);
+            addLog('👋 Sesión cerrada', 'info');
         }
 
         // ═══════════════════════════════════════════════════════════════════════
