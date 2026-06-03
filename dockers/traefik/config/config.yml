@@ -1,16 +1,9 @@
 http:
   middlewares:
-    redirect-https:
-      redirectScheme:
-        scheme: https
-        permanent: true
-    
-    # Circuit breaker middleware - detects failures and opens
+    # Circuit breaker middleware
     circuit-breaker:
       circuitBreaker:
-        expression: "NetworkErrorRatio() > 0.5 || (ResponseCodeRatio(500, 502, 503) > 0.3)"
-        check_period: 2s
-        fallback_duration: 30s
+        expression: "NetworkErrorRatio() > 0.5 || ResponseCodeRatio(500, 600, 0, 600) > 0.3"
     
     # Rate limiting - 100 requests per second per IP
     rate-limit:
@@ -29,125 +22,137 @@ http:
           X-Service: "NotebookUM-API"
           X-Environment: "production"
     
-    # Request/response timeout
-    timeout-handler:
-      forwardauth:
-        # Using timeout in the router instead
-    
     # Compression middleware
     compression:
       compress:
         minResponseBodyBytes: 1024
 
-  routers:
-    traefik-http:
-      rule: "Host(`traefik.universidad.localhost`)"
-      service: "noop@internal"
-      entryPoints:
-        - http
-      middlewares:
-        - redirect-https
+    # CORS headers for dashboard
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "PATCH"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Content-Type"
+          - "Authorization"
+          - "X-User-ID"
+          - "X-Correlation-ID"
+        accessControlAllowOriginList:
+          - "*"
+        accessControlMaxAge: 3600
 
+  # ─── ROUTERS ────────────────────────────────────────────────────────────────
+
+  routers:
+    # Traefik Dashboard
     traefik:
       rule: "Host(`traefik.universidad.localhost`)"
       service: "api@internal"
       entryPoints:
-        - https
-      tls:
-        domains:
-          - main: "universidad.localhost"
-            sans:
-              - "*.universidad.localhost"
-          - main: "universidad.local"
-            sans:
-              - "*.universidad.local"
+        - http
 
-    # NotebookUM API with circuit breaker and rate limiting
-    notebookum-http:
-      rule: "Host(`notebookum.universidad.localhost`)"
-      service: "notebookum"
+    # Controller (Go) — API Gateway — :5000
+    controller:
+      rule: "Host(`controller.universidad.localhost`)"
+      service: "controller"
       entryPoints:
         - http
-      middlewares:
-        - redirect-https
-
-    notebookum-https:
-      rule: "Host(`notebookum.universidad.localhost`)"
-      service: "notebookum"
-      entryPoints:
-        - https
       middlewares:
         - rate-limit
         - circuit-breaker
         - request-tracing
-        - compression
-      tls:
-        domains:
-          - main: "universidad.localhost"
-            sans:
-              - "*.universidad.localhost"
-          - main: "universidad.local"
-            sans:
-              - "*.universidad.local"
-      timeoutConnect: 10s
-      timeoutRequest: 30s
-      timeoutIdle: 60s
+        - cors-headers
 
-    notebookum:
-      rule: "Host(`notebookum.universidad.localhost`)"
-      service: "notebookum"
+    # User Service (Python) — :8001
+    user-service:
+      rule: "Host(`user.universidad.localhost`)"
+      service: "user-service"
       entryPoints:
         - http
-        - https
+      middlewares:
+        - rate-limit
+        - cors-headers
+
+    # Extract Service (Python) — :8002
+    extract-service:
+      rule: "Host(`extract.universidad.localhost`)"
+      service: "extract-service"
+      entryPoints:
+        - http
+      middlewares:
+        - rate-limit
+        - cors-headers
+
+    # Summary Service (Python + Groq) — :8003
+    summary-service:
+      rule: "Host(`summary.universidad.localhost`)"
+      service: "summary-service"
+      entryPoints:
+        - http
+      middlewares:
+        - rate-limit
+        - cors-headers
+
+    # Persistence Service (Java) — :8004
+    persistence-service:
+      rule: "Host(`persistence.universidad.localhost`)"
+      service: "persistence-service"
+      entryPoints:
+        - http
       middlewares:
         - rate-limit
         - circuit-breaker
-        - request-tracing
-        - compression
-      tls:
-        domains:
-          - main: "universidad.localhost"
-            sans:
-              - "*.universidad.localhost"
-          - main: "universidad.local"
-            sans:
-              - "*.universidad.local"
-      timeoutConnect: 10s
-      timeoutRequest: 30s
-      timeoutIdle: 60s
+        - cors-headers
+
+  # ─── SERVICES ───────────────────────────────────────────────────────────────
 
   services:
-    notebookum:
+    controller:
       loadBalancer:
         servers:
-          - url: "http://notebookum:8000"
+          - url: "http://controller:5000"
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+
+    user-service:
+      loadBalancer:
+        servers:
+          - url: "http://user-service:8001"
         healthCheck:
           path: /health
           interval: 30s
           timeout: 5s
-          scheme: http
 
-tcp:
-  # PostgreSQL TCP passthrough
-  routers:
-    postgresql:
-      entryPoints:
-        - postgresql
-      service: postgresql
-      rule: "HostSNI(`*`)"
-
-  services:
-    postgresql:
+    extract-service:
       loadBalancer:
         servers:
-          - address: "postgres:5432"
+          - url: "http://extract-service:8002"
+        healthCheck:
+          path: /health
+          interval: 30s
+          timeout: 5s
 
-tls:
-  stores:
-    default:
-      defaultCertificate:
-        certFile: "/etc/certs/cert.pem"
-        keyFile: "/etc/certs/key.pem"
-  certificates:
-    - certFile: "/etc/certs/cert.pem"
-      keyFile: "/etc/certs/key.pem"
+    summary-service:
+      loadBalancer:
+        servers:
+          - url: "http://summary-service:8003"
+        healthCheck:
+          path: /health
+          interval: 30s
+          timeout: 5s
+
+    persistence-service:
+      loadBalancer:
+        servers:
+          - url: "http://persistence-service:8004"
+        healthCheck:
+          path: /actuator/health
+          interval: 30s
+          timeout: 5s
