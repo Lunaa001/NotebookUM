@@ -1,6 +1,6 @@
 http:
   middlewares:
-    # Circuit breaker middleware
+    # Circuit breaker middleware (global)
     circuit-breaker:
       circuitBreaker:
         expression: "NetworkErrorRatio() > 0.5 || ResponseCodeRatio(500, 600, 0, 600) > 0.3"
@@ -27,7 +27,7 @@ http:
       compress:
         minResponseBodyBytes: 1024
 
-    # CORS headers for dashboard
+    # CORS headers (global)
     cors-headers:
       headers:
         accessControlAllowMethods:
@@ -56,58 +56,70 @@ http:
       entryPoints:
         - http
 
-    # Controller (Go) — API Gateway — :5000
+    # Controller (Go) — API Gateway + Orchestrator — :5000
     controller:
-      rule: "Host(`controller.universidad.localhost`)"
+      rule: "Host(`api.universidad.localhost`)"
       service: "controller"
       entryPoints:
         - http
+        - https
       middlewares:
         - rate-limit
         - circuit-breaker
         - request-tracing
         - cors-headers
 
-    # User Service (Python) — :8001
+    # User Service (Python/FastAPI) — :5000
     user-service:
-      rule: "Host(`user.universidad.localhost`)"
+      rule: "Host(`users.universidad.localhost`)"
       service: "user-service"
       entryPoints:
         - http
+        - https
       middlewares:
         - rate-limit
         - cors-headers
 
-    # Extract Service (Python) — :8002
+    # Extract Service (Python/FastAPI) — :5000
     extract-service:
-      rule: "Host(`extract.universidad.localhost`)"
+      rule: "Host(`extractor.universidad.localhost`)"
       service: "extract-service"
       entryPoints:
         - http
+        - https
       middlewares:
         - rate-limit
         - cors-headers
 
-    # Summary Service (Python + Groq) — :8003
+    # Summary/AI Service (Python/FastAPI + Groq) — :5000
     summary-service:
-      rule: "Host(`summary.universidad.localhost`)"
+      rule: "Host(`ai.universidad.localhost`)"
       service: "summary-service"
       entryPoints:
         - http
+        - https
       middlewares:
         - rate-limit
         - cors-headers
 
-    # Persistence Service (Java) — :8004
+    # Persistence Service (Java/Spring Boot) — :8080
     persistence-service:
-      rule: "Host(`persistence.universidad.localhost`)"
+      rule: "Host(`persistence-java.universidad.localhost`)"
       service: "persistence-service"
       entryPoints:
         - http
+        - https
       middlewares:
         - rate-limit
         - circuit-breaker
         - cors-headers
+
+    # Consul Service Discovery
+    consul:
+      rule: "Host(`consul.universidad.localhost`)"
+      service: "consul"
+      entryPoints:
+        - http
 
   # ─── SERVICES ───────────────────────────────────────────────────────────────
 
@@ -124,7 +136,7 @@ http:
     user-service:
       loadBalancer:
         servers:
-          - url: "http://user-service:8001"
+          - url: "http://user-service:5000"
         healthCheck:
           path: /health
           interval: 30s
@@ -133,7 +145,7 @@ http:
     extract-service:
       loadBalancer:
         servers:
-          - url: "http://extract-service:8002"
+          - url: "http://extract-service:5000"
         healthCheck:
           path: /health
           interval: 30s
@@ -142,7 +154,7 @@ http:
     summary-service:
       loadBalancer:
         servers:
-          - url: "http://summary-service:8003"
+          - url: "http://summary-service:5000"
         healthCheck:
           path: /health
           interval: 30s
@@ -151,8 +163,13 @@ http:
     persistence-service:
       loadBalancer:
         servers:
-          - url: "http://persistence-service:8004"
+          - url: "http://persistence-service:8080"
         healthCheck:
           path: /actuator/health
           interval: 30s
           timeout: 5s
+
+    consul:
+      loadBalancer:
+        servers:
+          - url: "http://consul:8500"

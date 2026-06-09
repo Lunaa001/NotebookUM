@@ -541,7 +541,7 @@
                             <span class="service-icon">⚙️</span>
                             <div>
                                 <div class="service-name">Controller</div>
-                                <div class="service-port">Go · :5001</div>
+                                <div class="service-port">Go · api.universidad.localhost</div>
                             </div>
                         </div>
                         <span class="status-badge status-checking" id="status-controller">Checking</span>
@@ -551,7 +551,7 @@
                             <span class="service-icon">👤</span>
                             <div>
                                 <div class="service-name">User Service</div>
-                                <div class="service-port">Python · :8001</div>
+                                <div class="service-port">Python · users.universidad.localhost</div>
                             </div>
                         </div>
                         <span class="status-badge status-checking" id="status-user">Checking</span>
@@ -561,7 +561,7 @@
                             <span class="service-icon">📄</span>
                             <div>
                                 <div class="service-name">Extract Service</div>
-                                <div class="service-port">Python · :8002</div>
+                                <div class="service-port">Python · extractor.universidad.localhost</div>
                             </div>
                         </div>
                         <span class="status-badge status-checking" id="status-extract">Checking</span>
@@ -571,7 +571,7 @@
                             <span class="service-icon">✨</span>
                             <div>
                                 <div class="service-name">Summary Service</div>
-                                <div class="service-port">Python+Groq · :8003</div>
+                                <div class="service-port">Python+Groq · ai.universidad.localhost</div>
                             </div>
                         </div>
                         <span class="status-badge status-checking" id="status-summary">Checking</span>
@@ -581,7 +581,7 @@
                             <span class="service-icon">💾</span>
                             <div>
                                 <div class="service-name">Persistence</div>
-                                <div class="service-port">Java · :8004</div>
+                                <div class="service-port">Java · persistence-java.universidad.localhost</div>
                             </div>
                         </div>
                         <span class="status-badge status-checking" id="status-persistence">Checking</span>
@@ -727,15 +727,15 @@
         // ═══════════════════════════════════════════════════════════════════════
         const CONFIG = {
             // Controller is the ONLY entry point
-            CONTROLLER_URL: 'http://localhost:5001',
+            CONTROLLER_URL: 'http://api.universidad.localhost',
             
             // Direct service URLs for health checks only
             SERVICES: {
-                controller:  { url: 'http://localhost:5001',  health: '/health' },
-                user:        { url: 'http://localhost:8001',  health: '/health' },
-                extract:     { url: 'http://localhost:8002',  health: '/health' },
-                summary:     { url: 'http://localhost:8003',  health: '/health' },
-                persistence: { url: 'http://localhost:8004',  health: '/actuator/health' },
+                controller:  { url: 'http://api.universidad.localhost',  health: '/health' },
+                user:        { url: 'http://users.universidad.localhost',  health: '/health' },
+                extract:     { url: 'http://extractor.universidad.localhost',  health: '/health' },
+                summary:     { url: 'http://ai.universidad.localhost',  health: '/health' },
+                persistence: { url: 'http://persistence-java.universidad.localhost',  health: '/actuator/health' },
             },
             
             MAX_FILE_SIZE: 25 * 1024 * 1024,  // 25 MB
