@@ -139,7 +139,7 @@
         /* ─── MAIN GRID ───────────────────────────────────── */
         .main-grid {
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 280px 1fr 300px;
             gap: 20px;
             margin-bottom: 24px;
         }
@@ -479,6 +479,8 @@
         /* ─── RESPONSIVE ──────────────────────────────────── */
         @media (max-width: 1024px) {
             .main-grid { grid-template-columns: 1fr; }
+            .auth-container { grid-template-columns: 1fr; }
+            .auth-panel { border-left: none; border-top: 1px solid var(--border-glass); }
             .stats-bar { grid-template-columns: 1fr; }
             .pipeline-steps { grid-template-columns: repeat(3, 1fr); }
             .results-grid { grid-template-columns: 1fr; }
@@ -636,8 +638,11 @@
                 </div>
 
                 <!-- Upload Zone -->
-                <div class="card">
-                    <div class="card-header">📁 Cargar PDF</div>
+                <div class="card" id="upload-card" style="opacity: 0.5; pointer-events: none;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>📁 Cargar PDF</span>
+                        <span id="upload-lock-msg" style="color: var(--accent-blue); font-size: 0.85rem; padding-right: 10px;">🔒 Debes iniciar sesión primero</span>
+                    </div>
                     <div class="card-body">
                         <div class="upload-zone" id="upload-zone">
                             <div class="upload-icon">📎</div>
@@ -686,18 +691,21 @@
                         </div>
                         <div class="processing-info" id="processing-info" style="display:none;"></div>
                     </div>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Logs -->
-                <div class="card">
+            <!-- Right Sidebar (Logs) -->
+            <div class="sidebar">
+                <div class="card" style="height: 100%; display: flex; flex-direction: column;">
                     <div class="card-header">📜 Logs en Vivo</div>
-                    <div class="card-body">
-                        <div class="log-terminal" id="log-terminal">
+                    <div class="card-body" style="flex: 1; display: flex; flex-direction: column; min-height: 400px;">
+                        <div class="log-terminal" id="log-terminal" style="flex: 1; min-height: 200px;">
                             <div class="log-entry"><span class="log-time">[--:--:--]</span> <span class="log-info">Dashboard listo. Esperando archivo...</span></div>
                         </div>
-                        <div class="log-actions">
+                        <div class="log-actions" style="margin-top: 15px;">
                             <button class="btn btn-ghost" onclick="clearLogs()">🧹 Limpiar</button>
-                            <button class="btn btn-ghost" onclick="checkAllServices()">🔄 Re-check Servicios</button>
+                            <button class="btn btn-ghost" onclick="checkAllServices()">🔄 Re-check</button>
                         </div>
                     </div>
                 </div>
@@ -874,13 +882,25 @@
         let currentUserToken = null;
 
         function updateAuthUI(userEmail) {
+            const uploadCard = document.getElementById('upload-card');
+            const lockMsg = document.getElementById('upload-lock-msg');
             if (userEmail) {
                 document.getElementById('auth-forms').style.display = 'none';
                 document.getElementById('logged-in-view').style.display = 'block';
                 document.getElementById('current-user-email').textContent = userEmail;
+                if (uploadCard) {
+                    uploadCard.style.opacity = '1';
+                    uploadCard.style.pointerEvents = 'auto';
+                }
+                if (lockMsg) lockMsg.style.display = 'none';
             } else {
                 document.getElementById('auth-forms').style.display = 'grid';
                 document.getElementById('logged-in-view').style.display = 'none';
+                if (uploadCard) {
+                    uploadCard.style.opacity = '0.5';
+                    uploadCard.style.pointerEvents = 'none';
+                }
+                if (lockMsg) lockMsg.style.display = 'inline';
             }
         }
 
@@ -910,7 +930,11 @@
                     updateAuthUI(data.user.email);
                 } else {
                     const error = await response.json().catch(()=>({}));
-                    addLog(`❌ Error en registro: ${error.detail || response.statusText}`, 'error');
+                    let errMsg = error.detail || response.statusText;
+                    if (Array.isArray(error.detail)) {
+                        errMsg = error.detail.map(e => e.msg).join(', ');
+                    }
+                    addLog(`❌ Error en registro: ${errMsg}`, 'error');
                 }
             } catch (err) {
                 addLog(`❌ Error de red: ${err.message}`, 'error');
@@ -941,7 +965,11 @@
                     updateAuthUI(data.user.email);
                 } else {
                     const error = await response.json().catch(()=>({}));
-                    addLog(`❌ Error en login: ${error.detail || response.statusText}`, 'error');
+                    let errMsg = error.detail || response.statusText;
+                    if (Array.isArray(error.detail)) {
+                        errMsg = error.detail.map(e => e.msg).join(', ');
+                    }
+                    addLog(`❌ Error en login: ${errMsg}`, 'error');
                 }
             } catch (err) {
                 addLog(`❌ Error de red: ${err.message}`, 'error');
