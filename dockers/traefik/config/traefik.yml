@@ -15,6 +15,13 @@ providers:
     filename: /etc/traefik/config.yml
     watch: true
 
+  consulCatalog:
+    endpoint:
+      address: "http://consul:8500"
+      token: "ac80cdb0-2ca6-4182-ae14-15158c33c095"
+    exposedByDefault: false
+    prefix: "traefik"
+    refreshInterval: "15s"
 
 log:
   level: DEBUG
