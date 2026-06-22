@@ -18,7 +18,7 @@ providers:
   consulCatalog:
     endpoint:
       address: "http://consul:8500"
-      token: "ac80cdb0-2ca6-4182-ae14-15158c33c095"
+      token: "2be22662-4819-4a0c-81d9-b3f50c4c389c"
     exposedByDefault: false
     prefix: "traefik"
     refreshInterval: "15s"

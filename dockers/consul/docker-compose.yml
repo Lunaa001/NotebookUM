@@ -5,8 +5,12 @@ services:
     restart: unless-stopped
     volumes:
       - "./data:/consul/data"
-      - "./config:/consul/config"
-    command: agent -server -client=0.0.0.0 -bootstrap -ui -data-dir=/consul/data -config-dir=/consul/config -bootstrap-expect=1
+    command: >
+      agent -server -client=0.0.0.0 -bootstrap -ui
+      -data-dir=/consul/data
+      -bootstrap-expect=1
+      -datacenter=dc-converter
+      -node=ds
     networks:
       - notebookum-network
     ports:
