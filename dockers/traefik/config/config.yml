@@ -1,11 +1,9 @@
 http:
   middlewares:
-    # Circuit breaker middleware (global)
     circuit-breaker:
       circuitBreaker:
         expression: "NetworkErrorRatio() > 0.5 || ResponseCodeRatio(500, 600, 0, 600) > 0.3"
-    
-    # Rate limiting - 100 requests per second per IP
+
     rate-limit:
       rateLimit:
         average: 100
@@ -14,20 +12,17 @@ http:
         sourceCriterion:
           ipStrategy:
             depth: 1
-    
-    # Request tracing header
+
     request-tracing:
       headers:
         customRequestHeaders:
           X-Service: "NotebookUM-API"
           X-Environment: "production"
-    
-    # Compression middleware
+
     compression:
       compress:
         minResponseBodyBytes: 1024
 
-    # CORS headers (global)
     cors-headers:
       headers:
         accessControlAllowMethods:
@@ -46,17 +41,13 @@ http:
           - "*"
         accessControlMaxAge: 3600
 
-  # ─── ROUTERS ────────────────────────────────────────────────────────────────
-
   routers:
-    # Traefik Dashboard
     traefik:
       rule: "Host(`traefik.universidad.localhost`)"
       service: "api@internal"
       entryPoints:
         - http
 
-    # Controller (Go) — API Gateway + Orchestrator — :5000
     controller:
       rule: "Host(`api.universidad.localhost`)"
       service: "controller"
@@ -69,7 +60,6 @@ http:
         - request-tracing
         - cors-headers
 
-    # User Service (Python/FastAPI) — :5000
     user-service:
       rule: "Host(`users.universidad.localhost`)"
       service: "user-service"
@@ -80,7 +70,6 @@ http:
         - rate-limit
         - cors-headers
 
-    # Extract Service (Python/FastAPI) — :5000
     extract-service:
       rule: "Host(`extractor.universidad.localhost`)"
       service: "extract-service"
@@ -91,7 +80,6 @@ http:
         - rate-limit
         - cors-headers
 
-    # Summary/AI Service (Python/FastAPI + Groq) — :5000
     summary-service:
       rule: "Host(`ai.universidad.localhost`)"
       service: "summary-service"
@@ -102,7 +90,6 @@ http:
         - rate-limit
         - cors-headers
 
-    # Persistence Service (Java/Spring Boot) — :8080
     persistence-service:
       rule: "Host(`persistence-java.universidad.localhost`)"
       service: "persistence-service"
@@ -114,14 +101,11 @@ http:
         - circuit-breaker
         - cors-headers
 
-    # Consul Service Discovery
     consul:
       rule: "Host(`consul.universidad.localhost`)"
       service: "consul"
       entryPoints:
         - http
-
-  # ─── SERVICES ───────────────────────────────────────────────────────────────
 
   services:
     controller:
@@ -136,7 +120,7 @@ http:
     user-service:
       loadBalancer:
         servers:
-          - url: "http://user-service:5000"
+          - url: "http://user:5000"
         healthCheck:
           path: /health
           interval: 30s
@@ -145,7 +129,7 @@ http:
     extract-service:
       loadBalancer:
         servers:
-          - url: "http://extract-service:5000"
+          - url: "http://extractor:5000"
         healthCheck:
           path: /health
           interval: 30s
@@ -154,7 +138,7 @@ http:
     summary-service:
       loadBalancer:
         servers:
-          - url: "http://summary-service:5000"
+          - url: "http://ai:5000"
         healthCheck:
           path: /health
           interval: 30s
@@ -163,7 +147,7 @@ http:
     persistence-service:
       loadBalancer:
         servers:
-          - url: "http://persistence-service:8080"
+          - url: "http://persistence:8080"
         healthCheck:
           path: /actuator/health
           interval: 30s

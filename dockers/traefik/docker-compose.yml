@@ -1,41 +1,20 @@
-version: '3.8'
-
 services:
-    reverse-proxy:
-        image: traefik:3.6
-        container_name: traefik
-        restart: unless-stopped
-        
-        # No permitir privilegios elevados
-        security_opt:
-            - no-new-privileges:true
-        
-        # Puertos expuestos (80=HTTP, 443=HTTPS, 8080=Dashboard)
-        ports:
-            - 80:80
-            - 443:443
-            - 8080:8080      # Traefik Dashboard
-        
-        # Volúmenes para configuración y certificados
-        volumes:
-            # Socket de Docker (para auto-detectar contenedores)
-            - /var/run/docker.sock:/var/run/docker.sock:ro
-            # Configuración de Traefik
-            - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
-            - ./config/config.yml:/etc/traefik/config.yml:ro
-            # Certificados SSL
-            - ./certs:/etc/certs:ro
-        
-        # Red compartida
-        networks:
-            - notebookum-network
-        
-        # Labels de Traefik para sí mismo (dashboard)
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.traefik.rule=Host(`traefik.universidad.local`)"
-            - "traefik.http.routers.traefik.entryPoints=http,https"
-            - "traefik.http.routers.traefik.service=api@internal"
+  reverse-proxy:
+    image: traefik:3.6
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/config.yml:/etc/traefik/config.yml:ro
+      - ./certs:/etc/certs:ro
+    networks:
+      - notebookum-network
 
 networks:
   notebookum-network:

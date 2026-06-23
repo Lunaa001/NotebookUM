@@ -32,5 +32,5 @@ entryPoints:
     address: ":80"
   https:
     address: ":443"
-  postgresql:
-    address: ":5432"
+  redis:
+    address: ":6379"

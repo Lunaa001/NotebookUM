@@ -1,38 +1,18 @@
-version: '3.8'
-
-services:    
-  postgresql:
-    container_name: postgresql-servidor
-    image: postgres:15.4-bullseye
-    
-    # Puerto por defecto de PostgreSQL
-    ports:
-      - "5432:5432"
-    
-    # Red compartida con otros servicios
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
     networks:
       - notebookum-network
-    
-    # Variables de entorno (cambiar en .env)
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    
-    # Volúmenes para persistencia de datos
+    ports:
+      - "5432:5432"
     volumes:
       - ./data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d  # Scripts SQL iniciales
-    
-    restart: always
-    
-    # Verificar que PostgreSQL está listo
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 networks:
   notebookum-network:

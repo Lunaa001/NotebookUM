@@ -1,22 +1,16 @@
 services:
   consul:
-    image: hashicorp/consul:1.20
-    container_name: notebookum-consul
-    restart: unless-stopped
+    image: hashicorp/consul:1.16
+    container_name: consul
     volumes:
       - "./data:/consul/data"
-    command: >
-      agent -server -client=0.0.0.0 -bootstrap -ui
-      -data-dir=/consul/data
-      -bootstrap-expect=1
-      -datacenter=dc-converter
-      -node=ds
-    networks:
-      - notebookum-network
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0 -bind=0.0.0.0
     ports:
       - "8500:8500"
-      - "8600:8600/tcp"
-      - "8600:8600/udp"
+    networks:
+      notebookum-network:
+        aliases:
+          - consul.universidad.localhost
 
 networks:
   notebookum-network:
