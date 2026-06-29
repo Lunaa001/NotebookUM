@@ -41,65 +41,25 @@ http:
           - "*"
         accessControlMaxAge: 3600
 
+  # Routers/services for controller-service, user-service, extract-service,
+  # summary-service AND persistence-service are intentionally NOT defined
+  # here. All five self-register in Consul with valid `traefik.*` tags
+  # (persistence-service does so natively via Spring Cloud Consul Discovery;
+  # the other four via */app/consul_registration.py and
+  # controller-service/internal/config/consul.go, seeded by
+  # dockers/consul/kv-seed/seed.sh) and are discovered dynamically through the
+  # `consulCatalog` provider (see traefik.yml). A static `persistence-service`
+  # router used to be defined here too — verified via the Traefik API that it
+  # collided with the auto-discovered one (same Host rule, same priority,
+  # provider-nondeterministic winner), so it was removed. Only Consul itself
+  # stays static below: it has no Consul tags of its own (it IS the registry),
+  # so it cannot be discovered through its own catalog.
   routers:
     traefik:
       rule: "Host(`traefik.universidad.localhost`)"
       service: "api@internal"
       entryPoints:
         - http
-
-    controller:
-      rule: "Host(`api.universidad.localhost`)"
-      service: "controller"
-      entryPoints:
-        - http
-        - https
-      middlewares:
-        - rate-limit
-        - circuit-breaker
-        - request-tracing
-        - cors-headers
-
-    user-service:
-      rule: "Host(`users.universidad.localhost`)"
-      service: "user-service"
-      entryPoints:
-        - http
-        - https
-      middlewares:
-        - rate-limit
-        - cors-headers
-
-    extract-service:
-      rule: "Host(`extractor.universidad.localhost`)"
-      service: "extract-service"
-      entryPoints:
-        - http
-        - https
-      middlewares:
-        - rate-limit
-        - cors-headers
-
-    summary-service:
-      rule: "Host(`ai.universidad.localhost`)"
-      service: "summary-service"
-      entryPoints:
-        - http
-        - https
-      middlewares:
-        - rate-limit
-        - cors-headers
-
-    persistence-service:
-      rule: "Host(`persistence-java.universidad.localhost`)"
-      service: "persistence-service"
-      entryPoints:
-        - http
-        - https
-      middlewares:
-        - rate-limit
-        - circuit-breaker
-        - cors-headers
 
     consul:
       rule: "Host(`consul.universidad.localhost`)"
@@ -108,51 +68,6 @@ http:
         - http
 
   services:
-    controller:
-      loadBalancer:
-        servers:
-          - url: "http://controller:5000"
-        healthCheck:
-          path: /health
-          interval: 10s
-          timeout: 5s
-
-    user-service:
-      loadBalancer:
-        servers:
-          - url: "http://user:5000"
-        healthCheck:
-          path: /health
-          interval: 30s
-          timeout: 5s
-
-    extract-service:
-      loadBalancer:
-        servers:
-          - url: "http://extractor:5000"
-        healthCheck:
-          path: /health
-          interval: 30s
-          timeout: 5s
-
-    summary-service:
-      loadBalancer:
-        servers:
-          - url: "http://ai:5000"
-        healthCheck:
-          path: /health
-          interval: 30s
-          timeout: 5s
-
-    persistence-service:
-      loadBalancer:
-        servers:
-          - url: "http://persistence:8080"
-        healthCheck:
-          path: /actuator/health
-          interval: 30s
-          timeout: 5s
-
     consul:
       loadBalancer:
         servers:

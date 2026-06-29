@@ -33,7 +33,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Host que activa este servicio
-      - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.local`)"
+      - "traefik.http.routers.notebookum.rule=Host(`notebookum.universidad.localhost`)"
       # Protocolos (HTTP se redirige a HTTPS)
       - "traefik.http.routers.notebookum.entryPoints=http,https"
       # Servicio a enrutar

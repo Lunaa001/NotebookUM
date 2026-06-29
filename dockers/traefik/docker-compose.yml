@@ -8,6 +8,8 @@ services:
     ports:
       - 80:80
       - 443:443
+    environment:
+      - TRAEFIK_PROVIDERS_CONSULCATALOG_ENDPOINT_TOKEN=${CONSUL_TOKEN:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/traefik.yml:/etc/traefik/traefik.yml:ro

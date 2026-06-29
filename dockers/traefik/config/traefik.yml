@@ -18,7 +18,8 @@ providers:
   consulCatalog:
     endpoint:
       address: "http://consul:8500"
-      token: "2be22662-4819-4a0c-81d9-b3f50c4c389c"
+      # Token is injected via the TRAEFIK_PROVIDERS_CONSULCATALOG_ENDPOINT_TOKEN
+      # env var (see dockers/traefik/docker-compose.yml) — never hardcoded here.
     exposedByDefault: false
     prefix: "traefik"
     refreshInterval: "15s"
