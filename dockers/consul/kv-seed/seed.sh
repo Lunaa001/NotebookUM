@@ -34,4 +34,12 @@ seed_service "user-service"       'Host(`users.universidad.localhost`)' "rate-li
 seed_service "extract-service"    'Host(`extractor.universidad.localhost`)' "rate-limit@file,cors-headers@file" "5000"
 seed_service "summary-service"    'Host(`ai.universidad.localhost`)' "rate-limit@file,cors-headers@file" "5000"
 
+# persistence-service uses Spring Cloud Consul Config (format: KEY_VALUE)
+# so it resolves flat keys like TRAEFIK_ENABLE, not nested traefik/http/... paths.
+echo "Seeding Traefik tags for: persistence-service (Spring Cloud flat keys)"
+put "config/persistence-service/TRAEFIK_ENABLE"      "true"
+put "config/persistence-service/TRAEFIK_ROUTER_RULE"  'Host(`persistence-java.universidad.localhost`)'
+put "config/persistence-service/TRAEFIK_ENTRYPOINTS"  "http,https"
+put "config/persistence-service/TRAEFIK_LB_PORT"      "8080"
+
 echo "✓ Consul KV seed complete"
